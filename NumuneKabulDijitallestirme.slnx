@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NumuneKabul.Application/NumuneKabul.Application.csproj" />
+    <Project Path="src/NumuneKabul.Domain/NumuneKabul.Domain.csproj" />
+    <Project Path="src/NumuneKabul.Infrastructure/NumuneKabul.Infrastructure.csproj" />
+    <Project Path="src/NumuneKabul.Web/NumuneKabul.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NumuneKabul.Tests/NumuneKabul.Tests.csproj" />
+  </Folder>
+</Solution>
