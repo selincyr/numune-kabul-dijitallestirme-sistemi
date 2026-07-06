@@ -1,0 +1,56 @@
+﻿@page
+@model NumuneKabul.Web.Pages.Documents.IndexModel
+
+@{
+    ViewData["Title"] = "Belgeler";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2>Yüklenen Belgeler</h2>
+            <p class="text-muted mb-0">
+                Sisteme yüklenen numune kabul formları.
+            </p>
+        </div>
+
+        <a asp-page="/Upload" class="btn btn-primary">
+            Yeni PDF Yükle
+        </a>
+    </div>
+
+    @if (!Model.Documents.Any())
+    {
+        <div class="alert alert-info">
+            Henüz yüklenmiş belge bulunmuyor.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Belge No</th>
+                        <th>Dosya Adı</th>
+                        <th>Kurum</th>
+                        <th>Yükleme Tarihi</th>
+                        <th>Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var document in Model.Documents)
+                    {
+                        <tr>
+                            <td>@document.Id</td>
+                            <td>@document.FileName</td>
+                            <td>@document.Institution?.Name</td>
+                            <td>@document.UploadDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@document.Status</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

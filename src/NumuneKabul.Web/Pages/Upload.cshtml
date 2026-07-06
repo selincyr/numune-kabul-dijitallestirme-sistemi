@@ -1,0 +1,39 @@
+@page
+@model NumuneKabul.Web.Pages.UploadModel
+
+@{
+    ViewData["Title"] = "PDF Yükle";
+}
+
+<div class="container mt-4">
+    <h2>PDF Yükle</h2>
+    <p class="text-muted">
+        Numune kabul formunu PDF olarak seçip sisteme yükleyin.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            @Model.SuccessMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @Model.ErrorMessage
+        </div>
+    }
+
+    <form method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label asp-for="UploadedFile" class="form-label">PDF Dosyası</label>
+            <input asp-for="UploadedFile" class="form-control" accept=".pdf,application/pdf" />
+            <span asp-validation-for="UploadedFile" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            PDF Yükle
+        </button>
+    </form>
+</div>
