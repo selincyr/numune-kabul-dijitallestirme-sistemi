@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model NumuneKabul.Web.Pages.Documents.IndexModel
 
 @{
@@ -19,6 +19,11 @@
         </a>
     </div>
 
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
     @if (!Model.Documents.Any())
     {
         <div class="alert alert-info">
@@ -36,6 +41,7 @@
                         <th>Kurum</th>
                         <th>Yükleme Tarihi</th>
                         <th>Durum</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43,10 +49,22 @@
                     {
                         <tr>
                             <td>@document.Id</td>
-                            <td>@document.FileName</td>
+                            <td>
+                                <a asp-page="./Details"
+                                   asp-route-id="@document.Id">
+                                    @document.FileName
+                                </a>
+                            </td>
                             <td>@document.Institution?.Name</td>
                             <td>@document.UploadDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                             <td>@document.Status</td>
+                            <td>
+                                <a asp-page="./Details"
+                                   asp-route-id="@document.Id"
+                                   class="btn btn-sm btn-outline-primary">
+                                    Görüntüle
+                                </a>
+                            </td>
                         </tr>
                     }
                 </tbody>

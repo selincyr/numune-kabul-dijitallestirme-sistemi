@@ -1,0 +1,90 @@
+@page "{id:int}"
+@model NumuneKabul.Web.Pages.Documents.DetailsModel
+
+@{
+    ViewData["Title"] = "Belge Detayı";
+    var previewUrl = Url.Page("./Details", "Preview", new { id = Model.Document!.Id });
+}
+
+<div class="container mt-4">
+
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success">
+            @successMessage
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2>Belge Detayı</h2>
+            <p class="text-muted mb-0">@Model.Document!.FileName</p>
+        </div>
+
+        <a asp-page="./Index" class="btn btn-outline-secondary">
+            Belgelere Dön
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Belge Bilgileri</h5>
+
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Belge No</dt>
+                        <dd class="col-sm-7">@Model.Document!.Id</dd>
+
+                        <dt class="col-sm-5">Kurum</dt>
+                        <dd class="col-sm-7">@Model.Document.Institution?.Name</dd>
+
+                        <dt class="col-sm-5">Yükleme</dt>
+                        <dd class="col-sm-7">
+                            @Model.Document.UploadDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                        </dd>
+
+                        <dt class="col-sm-5">Durum</dt>
+                        <dd class="col-sm-7">@Model.Document.Status</dd>
+                    </dl>
+
+                    <hr />
+
+                    <form method="post"
+                          asp-page-handler="Render"
+                          asp-route-id="@Model.Document.Id"
+                          class="mb-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            Sayfaları PNG Olarak Hazırla
+                        </button>
+                    </form>
+
+                    <form method="post"
+                          asp-page-handler="Delete"
+                          asp-route-id="@Model.Document.Id">
+                        <button type="submit"
+                                class="btn btn-danger w-100"
+                                onclick="return confirm('Bu belge silinsin mi?');">
+                            Belgeyi Sil
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    PDF Görüntüleme
+                </div>
+
+                <div class="card-body p-0">
+                    <iframe src="@previewUrl"
+                            title="PDF Önizleme"
+                            style="width: 100%; height: 720px; border: 0;">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

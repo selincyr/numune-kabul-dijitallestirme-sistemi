@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NumuneKabul.Infrastructure.Data;
+using NumuneKabul.Application.Interfaces;
+using NumuneKabul.Infrastructure.Services.Pdf;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,8 @@ Directory.CreateDirectory(dataDirectory);
 connectionString = connectionString.Replace("|DataDirectory|", dataDirectory);
 
 builder.Services.AddRazorPages();
+
+builder.Services.AddScoped<IPdfRenderer, PdfRenderer>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
