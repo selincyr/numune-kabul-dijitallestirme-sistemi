@@ -3,7 +3,6 @@
 
 @{
     ViewData["Title"] = "Belge Detayı";
-    var previewUrl = Url.Page("./Details", "Preview", new { id = Model.Document!.Id });
 }
 
 <div class="container mt-4">
@@ -15,76 +14,175 @@
         </div>
     }
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2>Belge Detayı</h2>
-            <p class="text-muted mb-0">@Model.Document!.FileName</p>
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger">
+            @errorMessage
         </div>
+    }
 
-        <a asp-page="./Index" class="btn btn-outline-secondary">
-            Belgelere Dön
-        </a>
-    </div>
+    @if (Model.Document is null)
+    {
+        <div class="alert alert-warning">
+            Belge bulunamadı.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-4">
 
-    <div class="row g-4">
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Belge Bilgileri</h5>
+                <div class="card mb-3">
+                    <div class="card-header">
+                        Belge Bilgileri
+                    </div>
 
-                    <dl class="row mb-0">
-                        <dt class="col-sm-5">Belge No</dt>
-                        <dd class="col-sm-7">@Model.Document!.Id</dd>
+                    <div class="card-body">
+                        <p>
+                            <strong>Dosya Adı:</strong><br />
+                            @Model.Document.FileName
+                        </p>
 
-                        <dt class="col-sm-5">Kurum</dt>
-                        <dd class="col-sm-7">@Model.Document.Institution?.Name</dd>
+                        <p>
+                            <strong>Kurum:</strong><br />
+                            @Model.Document.Institution?.Name
+                        </p>
 
-                        <dt class="col-sm-5">Yükleme</dt>
-                        <dd class="col-sm-7">
+                        <p>
+                            <strong>Yükleme Tarihi:</strong><br />
                             @Model.Document.UploadDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
-                        </dd>
+                        </p>
 
-                        <dt class="col-sm-5">Durum</dt>
-                        <dd class="col-sm-7">@Model.Document.Status</dd>
-                    </dl>
-
-                    <hr />
-
-                    <form method="post"
-                          asp-page-handler="Render"
-                          asp-route-id="@Model.Document.Id"
-                          class="mb-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            Sayfaları PNG Olarak Hazırla
-                        </button>
-                    </form>
-
-                    <form method="post"
-                          asp-page-handler="Delete"
-                          asp-route-id="@Model.Document.Id">
-                        <button type="submit"
-                                class="btn btn-danger w-100"
-                                onclick="return confirm('Bu belge silinsin mi?');">
-                            Belgeyi Sil
-                        </button>
-                    </form>
+                        <p>
+                            <strong>Durum:</strong><br />
+                            @Model.Document.Status
+                        </p>
+                    </div>
                 </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        İşlemler
+                    </div>
+
+                    <div class="card-body">
+
+                        <form method="post" asp-page-handler="Render" asp-route-id="@Model.Document.Id" class="mb-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                Sayfaları PNG Olarak Hazırla
+                            </button>
+                        </form>
+
+                        <form method="post" asp-page-handler="Ocr" asp-route-id="@Model.Document.Id" class="mb-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                OCR Başlat
+                            </button>
+                        </form>
+
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Document.Id"
+                              onsubmit="return confirm('Bu belgeyi silmek istediğinize emin misiniz?');">
+                            <button type="submit" class="btn btn-danger w-100">
+                                Belgeyi Sil
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+
+                <a asp-page="./Index" class="btn btn-secondary w-100 mt-3">
+                    Belge Listesine Dön
+                </a>
+
+            </div>
+
+            <div class="col-md-8">
+
+                <div class="card">
+                    <div class="card-header">
+                        PDF Önizleme
+                    </div>
+
+                    <div class="card-body">
+                        <iframe src="?handler=Preview&id=@Model.Document.Id"
+                                style="width: 100%; height: 700px; border: 1px solid #ddd;">
+                        </iframe>
+                    </div>
+                </div>
+
+                @if (Model.ExtractedFields.Any())
+                {
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            Çıkarılan Alanlar
+                        </div>
+
+                        <div class="card-body">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Alan Adı</th>
+                                        <th>OCR Değeri</th>
+                                        <th>Düzeltilmiş Değer</th>
+                                        <th>Güven</th>
+                                        <th>Sayfa</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var field in Model.ExtractedFields)
+                                    {
+                                        <tr>
+                                            <td>@field.FieldName</td>
+                                            <td>@field.RawValue</td>
+                                            <td>@field.CorrectedValue</td>
+                                            <td>@field.Confidence.ToString("0")%</td>
+                                            <td>@field.PageNo</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                @if (Model.OcrResults.Any())
+                {
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            OCR Sonuçları
+                        </div>
+
+                        <div class="card-body">
+                            @foreach (var result in Model.OcrResults)
+                            {
+                                <div class="mb-3">
+                                    <h6>Sayfa @result.PageNo</h6>
+
+                                    @if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+                                    {
+                                        <div class="alert alert-danger">
+                                            @result.ErrorMessage
+                                        </div>
+                                    }
+                                    else if (string.IsNullOrWhiteSpace(result.RawText))
+                                    {
+                                        <div class="alert alert-warning">
+                                            Bu sayfadan OCR metni çıkarılamadı.
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <pre style="white-space: pre-wrap; background-color: #f8f9fa; padding: 12px; border-radius: 6px;">@result.RawText</pre>
+                                    }
+                                </div>
+
+                                <hr />
+                            }
+                        </div>
+                    </div>
+                }
+
             </div>
         </div>
+    }
 
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    PDF Görüntüleme
-                </div>
-
-                <div class="card-body p-0">
-                    <iframe src="@previewUrl"
-                            title="PDF Önizleme"
-                            style="width: 100%; height: 720px; border: 0;">
-                    </iframe>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>

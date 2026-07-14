@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using NumuneKabul.Infrastructure.Data;
 using NumuneKabul.Application.Interfaces;
 using NumuneKabul.Infrastructure.Services.Pdf;
+using NumuneKabul.Infrastructure.Services.Ocr;
+using NumuneKabul.Infrastructure.Services.Extraction;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +19,8 @@ connectionString = connectionString.Replace("|DataDirectory|", dataDirectory);
 builder.Services.AddRazorPages();
 
 builder.Services.AddScoped<IPdfRenderer, PdfRenderer>();
-
+builder.Services.AddScoped<IOcrService, TesseractOcrService>();
+builder.Services.AddScoped<IFieldExtractionService, RegexFieldExtractionService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
 
