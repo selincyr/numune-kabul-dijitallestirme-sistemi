@@ -485,3 +485,22 @@ $RECYCLE.BIN/
 src/NumuneKabul.Web/App_Data/*.db
 src/NumuneKabul.Web/App_Data/*.db-shm
 src/NumuneKabul.Web/App_Data/*.db-wal
+
+# Local database files
+src/NumuneKabul.Web/App_Data/
+*.db
+
+# Uploaded and generated files
+src/NumuneKabul.Web/Storage/Uploads/*
+src/NumuneKabul.Web/Storage/RenderedPages/*
+
+# Keep empty folders
+!src/NumuneKabul.Web/Storage/Uploads/.gitkeep
+!src/NumuneKabul.Web/Storage/RenderedPages/.gitkeep
+
+# Local OCR/test outputs
+langs.txt
+*.pdf
+*.png
+*.jpg
+*.jpeg
