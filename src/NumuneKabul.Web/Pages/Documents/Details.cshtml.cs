@@ -230,6 +230,37 @@ public class DetailsModel : PageModel
 
         return RedirectToPage(new { id });
     }
+    
+    public async Task<IActionResult> OnPostSaveFieldsAsync(
+    int id,
+    Dictionary<int, string> correctedValues)
+{
+    var documentExists = await _dbContext.PdfDocuments
+        .AnyAsync(x => x.Id == id);
+
+    if (!documentExists)
+    {
+        return NotFound();
+    }
+
+    var fields = await _dbContext.ExtractedFields
+        .Where(x => x.PdfId == id)
+        .ToListAsync();
+
+    foreach (var field in fields)
+    {
+        if (correctedValues.TryGetValue(field.Id, out var correctedValue))
+        {
+            field.CorrectedValue = correctedValue?.Trim();
+        }
+    }
+
+    await _dbContext.SaveChangesAsync();
+
+    TempData["SuccessMessage"] = "Alan düzeltmeleri başarıyla kaydedildi.";
+
+    return RedirectToPage(new { id });
+}
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)
     {

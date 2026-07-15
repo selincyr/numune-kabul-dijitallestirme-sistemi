@@ -113,33 +113,47 @@
                 {
                     <div class="card mt-3">
                         <div class="card-header">
-                            Çıkarılan Alanlar
+                            Çıkarılan Alanlar / Manuel Doğrulama
                         </div>
 
                         <div class="card-body">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Alan Adı</th>
-                                        <th>OCR Değeri</th>
-                                        <th>Düzeltilmiş Değer</th>
-                                        <th>Güven</th>
-                                        <th>Sayfa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var field in Model.ExtractedFields)
-                                    {
+                            <form method="post" asp-page-handler="SaveFields" asp-route-id="@Model.Document.Id">
+
+                                <table class="table table-bordered table-striped">
+                                    <thead>
                                         <tr>
-                                            <td>@field.FieldName</td>
-                                            <td>@field.RawValue</td>
-                                            <td>@field.CorrectedValue</td>
-                                            <td>@field.Confidence.ToString("0")%</td>
-                                            <td>@field.PageNo</td>
+                                            <th>Alan Adı</th>
+                                            <th>OCR Değeri</th>
+                                            <th>Düzeltilmiş Değer</th>
+                                            <th>Güven</th>
+                                            <th>Sayfa</th>
                                         </tr>
-                                    }
-                                </tbody>
-                            </table>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach (var field in Model.ExtractedFields)
+                                        {
+                                            <tr>
+                                                <td>@field.FieldName</td>
+                                                <td>@field.RawValue</td>
+                                                <td>
+                                                    <input type="text"
+                                                           name="correctedValues[@field.Id]"
+                                                           value="@field.CorrectedValue"
+                                                           class="form-control" />
+                                                </td>
+                                                <td>@field.Confidence.ToString("0")%</td>
+                                                <td>@field.PageNo</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+
+                                <button type="submit" class="btn btn-warning w-100">
+                                    Düzeltmeleri Kaydet
+                                </button>
+
+                            </form>
                         </div>
                     </div>
                 }
