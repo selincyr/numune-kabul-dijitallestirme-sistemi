@@ -126,6 +126,7 @@
                                             <th>OCR Değeri</th>
                                             <th>Düzeltilmiş Değer</th>
                                             <th>Güven</th>
+                                            <th>Durum</th>
                                             <th>Sayfa</th>
                                         </tr>
                                     </thead>
@@ -133,6 +134,32 @@
                                     <tbody>
                                         @foreach (var field in Model.ExtractedFields)
                                         {
+                                            var rawValue = field.RawValue?.Trim() ?? string.Empty;
+                                            var correctedValue = field.CorrectedValue?.Trim() ?? string.Empty;
+
+                                            var isManuallyCorrected =
+                                                !string.IsNullOrWhiteSpace(correctedValue) &&
+                                                !string.Equals(rawValue, correctedValue, StringComparison.OrdinalIgnoreCase);
+
+                                            var badgeClass = "bg-danger";
+                                            var statusText = "Düşük Güven";
+
+                                            if (isManuallyCorrected)
+                                            {
+                                                badgeClass = "bg-info text-dark";
+                                                statusText = "Manuel Düzeltildi";
+                                            }
+                                            else if (field.Confidence >= 85)
+                                            {
+                                                badgeClass = "bg-success";
+                                                statusText = "Yüksek Güven";
+                                            }
+                                            else if (field.Confidence >= 60)
+                                            {
+                                                badgeClass = "bg-warning text-dark";
+                                                statusText = "Kontrol Edilmeli";
+                                            }
+
                                             <tr>
                                                 <td>@field.FieldName</td>
                                                 <td>@field.RawValue</td>
@@ -143,6 +170,11 @@
                                                            class="form-control" />
                                                 </td>
                                                 <td>@field.Confidence.ToString("0")%</td>
+                                                <td>
+                                                    <span class="badge @badgeClass">
+                                                        @statusText
+                                                    </span>
+                                                </td>
                                                 <td>@field.PageNo</td>
                                             </tr>
                                         }
