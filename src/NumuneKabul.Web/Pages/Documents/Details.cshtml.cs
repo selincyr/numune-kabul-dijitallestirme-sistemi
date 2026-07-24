@@ -15,6 +15,7 @@ public class DetailsModel : PageModel
     private readonly IWebHostEnvironment _environment;
     private readonly IOcrService _ocrService;
     private readonly IFieldExtractionService _fieldExtractionService;
+    private readonly IXmlGenerationService _xmlGenerationService;
 
     public DetailsModel(
         AppDbContext dbContext,
@@ -22,7 +23,8 @@ public class DetailsModel : PageModel
         IWebHostEnvironment environment,
         IPdfRenderer pdfRenderer,
         IOcrService ocrService,
-        IFieldExtractionService fieldExtractionService)
+        IFieldExtractionService fieldExtractionService,
+        IXmlGenerationService xmlGenerationService)
     {
         _dbContext = dbContext;
         _configuration = configuration;
@@ -30,6 +32,7 @@ public class DetailsModel : PageModel
         _pdfRenderer = pdfRenderer;
         _ocrService = ocrService;
         _fieldExtractionService = fieldExtractionService;
+        _xmlGenerationService = xmlGenerationService;
     }
 
     public PdfDocument? Document { get; private set; }
@@ -37,6 +40,8 @@ public class DetailsModel : PageModel
     public List<OcrResult> OcrResults { get; private set; } = new();
 
     public List<ExtractedField> ExtractedFields { get; private set; } = new();
+
+    public List<XmlArchive> XmlArchives { get; private set; } = new();
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
@@ -61,6 +66,12 @@ public class DetailsModel : PageModel
             .Where(x => x.PdfId == id)
             .OrderBy(x => x.PageNo)
             .ThenBy(x => x.FieldName)
+            .ToListAsync();
+
+        XmlArchives = await _dbContext.XmlArchives
+            .AsNoTracking()
+            .Where(x => x.PdfId == id)
+            .OrderByDescending(x => x.CreatedDate)
             .ToListAsync();
 
         return Page();
@@ -152,7 +163,9 @@ public class DetailsModel : PageModel
 
         if (!Directory.Exists(renderedPagesDirectory))
         {
-            TempData["ErrorMessage"] = "OCR işleminden önce PDF sayfalarını PNG olarak hazırlamanız gerekir.";
+            TempData["ErrorMessage"] =
+                "OCR işleminden önce PDF sayfalarını PNG olarak hazırlamanız gerekir.";
+
             return RedirectToPage(new { id });
         }
 
@@ -230,37 +243,82 @@ public class DetailsModel : PageModel
 
         return RedirectToPage(new { id });
     }
-    
+
     public async Task<IActionResult> OnPostSaveFieldsAsync(
-    int id,
-    Dictionary<int, string> correctedValues)
-{
-    var documentExists = await _dbContext.PdfDocuments
-        .AnyAsync(x => x.Id == id);
-
-    if (!documentExists)
+        int id,
+        Dictionary<int, string> correctedValues)
     {
-        return NotFound();
-    }
+        var documentExists = await _dbContext.PdfDocuments
+            .AnyAsync(x => x.Id == id);
 
-    var fields = await _dbContext.ExtractedFields
-        .Where(x => x.PdfId == id)
-        .ToListAsync();
-
-    foreach (var field in fields)
-    {
-        if (correctedValues.TryGetValue(field.Id, out var correctedValue))
+        if (!documentExists)
         {
-            field.CorrectedValue = correctedValue?.Trim();
+            return NotFound();
         }
+
+        var fields = await _dbContext.ExtractedFields
+            .Where(x => x.PdfId == id)
+            .ToListAsync();
+
+        foreach (var field in fields)
+        {
+            if (correctedValues.TryGetValue(field.Id, out var correctedValue))
+            {
+                field.CorrectedValue = correctedValue?.Trim();
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        TempData["SuccessMessage"] =
+            "Alan düzeltmeleri başarıyla kaydedildi.";
+
+        return RedirectToPage(new { id });
     }
 
-    await _dbContext.SaveChangesAsync();
+    public async Task<IActionResult> OnPostCreateXmlAsync(int id)
+    {
+        var document = await _dbContext.PdfDocuments
+            .Include(x => x.Institution)
+            .FirstOrDefaultAsync(x => x.Id == id);
 
-    TempData["SuccessMessage"] = "Alan düzeltmeleri başarıyla kaydedildi.";
+        if (document is null)
+        {
+            return NotFound();
+        }
 
-    return RedirectToPage(new { id });
-}
+        var fields = await _dbContext.ExtractedFields
+            .Where(x => x.PdfId == id)
+            .OrderBy(x => x.PageNo)
+            .ThenBy(x => x.FieldName)
+            .ToListAsync();
+
+        if (!fields.Any())
+        {
+            TempData["ErrorMessage"] =
+                "XML oluşturmak için önce OCR ve alan çıkarma işlemi yapılmalıdır.";
+
+            return RedirectToPage(new { id });
+        }
+
+        var xmlContent = _xmlGenerationService.GenerateXml(document, fields);
+
+        var xmlArchive = new XmlArchive
+        {
+            PdfId = id,
+            XmlContent = xmlContent,
+            CreatedDate = DateTime.UtcNow
+        };
+
+        _dbContext.XmlArchives.Add(xmlArchive);
+
+        await _dbContext.SaveChangesAsync();
+
+        TempData["SuccessMessage"] =
+            "XML başarıyla oluşturuldu ve arşivlendi.";
+
+        return RedirectToPage(new { id });
+    }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)
     {
@@ -289,6 +347,7 @@ public class DetailsModel : PageModel
         }
 
         TempData["SuccessMessage"] = "Belge başarıyla silindi.";
+
         return RedirectToPage("./Index");
     }
 

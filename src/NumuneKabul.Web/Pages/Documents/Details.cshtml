@@ -84,6 +84,12 @@
                             </button>
                         </form>
 
+                        <form method="post" asp-page-handler="CreateXml" asp-route-id="@Model.Document.Id" class="mb-2">
+                            <button type="submit" class="btn btn-dark w-100">
+                                XML Oluştur
+                            </button>
+                        </form>
+
                         <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Document.Id"
                               onsubmit="return confirm('Bu belgeyi silmek istediğinize emin misiniz?');">
                             <button type="submit" class="btn btn-danger w-100">
@@ -191,6 +197,26 @@
                                 </button>
 
                             </form>
+                        </div>
+                    </div>
+                }
+
+                @if (Model.XmlArchives.Any())
+                {
+                    var latestXml = Model.XmlArchives.First();
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            XML Çıktısı
+                        </div>
+
+                        <div class="card-body">
+                            <p>
+                                <strong>Oluşturulma Tarihi:</strong>
+                                @latestXml.CreatedDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                            </p>
+
+                            <pre style="white-space: pre-wrap; background-color: #f8f9fa; padding: 12px; border-radius: 6px;">@latestXml.XmlContent</pre>
                         </div>
                     </div>
                 }
