@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using NumuneKabul.Application.Interfaces;
 using NumuneKabul.Domain.Entities;
 using NumuneKabul.Infrastructure.Data;
 
@@ -10,15 +12,18 @@ public class UploadModel : PageModel
     private readonly AppDbContext _dbContext;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
+    private readonly IPdfRenderer _pdfRenderer;
 
     public UploadModel(
         AppDbContext dbContext,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IPdfRenderer pdfRenderer)
     {
         _dbContext = dbContext;
         _configuration = configuration;
         _environment = environment;
+        _pdfRenderer = pdfRenderer;
     }
 
     [BindProperty]
@@ -69,7 +74,7 @@ public class UploadModel : PageModel
             await UploadedFile.CopyToAsync(fileStream);
         }
 
-        var institution = _dbContext.Institutions.FirstOrDefault();
+        var institution = await _dbContext.Institutions.FirstOrDefaultAsync();
 
         if (institution is null)
         {
@@ -92,7 +97,31 @@ public class UploadModel : PageModel
         _dbContext.PdfDocuments.Add(pdfDocument);
         await _dbContext.SaveChangesAsync();
 
-        SuccessMessage = $"PDF başarıyla yüklendi. Belge numarası: {pdfDocument.Id}";
-        return Page();
+        try
+        {
+            var renderedPagesRoot = Path.Combine(
+                _environment.ContentRootPath,
+                "Storage",
+                "RenderedPages");
+
+            var renderedFiles = await _pdfRenderer.RenderPdfAsync(
+                pdfDocument.Id,
+                savedFilePath,
+                renderedPagesRoot);
+
+            TempData["SuccessMessage"] =
+                $"PDF başarıyla yüklendi. Belge numarası: {pdfDocument.Id}. " +
+                $"{renderedFiles.Count} sayfa otomatik olarak PNG formatına dönüştürüldü.";
+        }
+        catch (Exception ex)
+        {
+            TempData["SuccessMessage"] =
+                $"PDF başarıyla yüklendi. Belge numarası: {pdfDocument.Id}.";
+
+            TempData["ErrorMessage"] =
+                $"PDF yüklendi ancak PNG dönüşümü sırasında hata oluştu: {ex.Message}";
+        }
+
+        return RedirectToPage("/Documents/Details", new { id = pdfDocument.Id });
     }
 }

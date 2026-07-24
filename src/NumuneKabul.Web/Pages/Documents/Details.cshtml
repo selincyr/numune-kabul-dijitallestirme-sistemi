@@ -67,9 +67,14 @@
 
                     <div class="card-body">
 
+                        <div class="alert alert-info small">
+                            PDF sayfaları yükleme sırasında otomatik olarak PNG formatına dönüştürülür.
+                            Gerekirse aşağıdaki buton ile yeniden oluşturabilirsiniz.
+                        </div>
+
                         <form method="post" asp-page-handler="Render" asp-route-id="@Model.Document.Id" class="mb-2">
                             <button type="submit" class="btn btn-primary w-100">
-                                Sayfaları PNG Olarak Hazırla
+                                PNG Sayfalarını Yeniden Oluştur
                             </button>
                         </form>
 
