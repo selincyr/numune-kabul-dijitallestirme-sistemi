@@ -95,6 +95,13 @@ public class UploadModel : PageModel
         };
 
         _dbContext.PdfDocuments.Add(pdfDocument);
+
+        await _dbContext.SaveChangesAsync();
+
+        AddAuditLog(
+            "PdfUpload",
+            $"{pdfDocument.Id} numaralı belge sisteme yüklendi. Dosya adı: {pdfDocument.FileName}");
+
         await _dbContext.SaveChangesAsync();
 
         try
@@ -109,12 +116,24 @@ public class UploadModel : PageModel
                 savedFilePath,
                 renderedPagesRoot);
 
+            AddAuditLog(
+                "PdfRender",
+                $"{pdfDocument.Id} numaralı belge yüklendikten sonra otomatik PNG dönüşümü tamamlandı. Oluşturulan sayfa sayısı: {renderedFiles.Count}.");
+
+            await _dbContext.SaveChangesAsync();
+
             TempData["SuccessMessage"] =
                 $"PDF başarıyla yüklendi. Belge numarası: {pdfDocument.Id}. " +
                 $"{renderedFiles.Count} sayfa otomatik olarak PNG formatına dönüştürüldü.";
         }
         catch (Exception ex)
         {
+            AddAuditLog(
+                "PdfRenderError",
+                $"{pdfDocument.Id} numaralı belge yüklendi ancak PNG dönüşümü sırasında hata oluştu: {ex.Message}");
+
+            await _dbContext.SaveChangesAsync();
+
             TempData["SuccessMessage"] =
                 $"PDF başarıyla yüklendi. Belge numarası: {pdfDocument.Id}.";
 
@@ -123,5 +142,15 @@ public class UploadModel : PageModel
         }
 
         return RedirectToPage("/Documents/Details", new { id = pdfDocument.Id });
+    }
+
+    private void AddAuditLog(string action, string description)
+    {
+        _dbContext.AuditLogs.Add(new AuditLog
+        {
+            Action = action,
+            Description = description,
+            Date = DateTime.UtcNow
+        });
     }
 }

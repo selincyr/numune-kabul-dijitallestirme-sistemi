@@ -1,0 +1,81 @@
+@page
+@model NumuneKabul.Web.Pages.AuditLogs.IndexModel
+
+@{
+    ViewData["Title"] = "Audit Log";
+}
+
+<div class="container mt-4">
+    <h2>Audit Log Kayıtları</h2>
+
+    <p class="text-muted">
+        Sistemde gerçekleşen önemli işlemler bu ekranda listelenir.
+    </p>
+
+    @if (!Model.AuditLogs.Any())
+    {
+        <div class="alert alert-info">
+            Henüz audit log kaydı bulunmamaktadır.
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                Son 100 İşlem
+            </div>
+
+            <div class="card-body">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>İşlem</th>
+                            <th>Açıklama</th>
+                            <th>Kullanıcı</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var log in Model.AuditLogs)
+                        {
+                            var badgeClass = log.Action switch
+                            {
+                                "PdfUpload" => "bg-primary",
+                                "PdfRender" => "bg-info text-dark",
+                                "PdfRenderError" => "bg-danger",
+                                "OCR" => "bg-success",
+                                "OCRError" => "bg-danger",
+                                "ManualCorrection" => "bg-warning text-dark",
+                                "XmlCreate" => "bg-dark",
+                                "XmlCreateError" => "bg-danger",
+                                "PdfDelete" => "bg-secondary",
+                                _ => "bg-light text-dark"
+                            };
+
+                            <tr>
+                                <td style="white-space: nowrap;">
+                                    @log.Date.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </td>
+
+                                <td>
+                                    <span class="badge @badgeClass">
+                                        @log.Action
+                                    </span>
+                                </td>
+
+                                <td>
+                                    @log.Description
+                                </td>
+
+                                <td>
+                                    @(log.User?.Username ?? "Sistem")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
