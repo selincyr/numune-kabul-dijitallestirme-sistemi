@@ -1,5 +1,6 @@
 @page "{id:int}"
 @model NumuneKabul.Web.Pages.Documents.DetailsModel
+@using NumuneKabul.Domain.Enums
 
 @{
     ViewData["Title"] = "Belge Detayı";
@@ -90,6 +91,12 @@
                             </button>
                         </form>
 
+                        <form method="post" asp-page-handler="SendIntegration" asp-route-id="@Model.Document.Id" class="mb-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                Mock Servise Gönder
+                            </button>
+                        </form>
+
                         <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Document.Id"
                               onsubmit="return confirm('Bu belgeyi silmek istediğinize emin misiniz?');">
                             <button type="submit" class="btn btn-danger w-100">
@@ -152,23 +159,28 @@
                                                 !string.IsNullOrWhiteSpace(correctedValue) &&
                                                 !string.Equals(rawValue, correctedValue, StringComparison.OrdinalIgnoreCase);
 
-                                            var badgeClass = "bg-danger";
-                                            var statusText = "Düşük Güven";
+                                            var badgeClass = "bg-secondary";
+                                            var statusText = "Bilinmiyor";
 
                                             if (isManuallyCorrected)
                                             {
                                                 badgeClass = "bg-info text-dark";
                                                 statusText = "Manuel Düzeltildi";
                                             }
-                                            else if (field.Confidence >= 85)
+                                            else if (field.Status == FieldStatus.Verified)
                                             {
                                                 badgeClass = "bg-success";
-                                                statusText = "Yüksek Güven";
+                                                statusText = "Bulundu / Doğrulandı";
                                             }
-                                            else if (field.Confidence >= 60)
+                                            else if (field.Status == FieldStatus.NeedsReview)
                                             {
                                                 badgeClass = "bg-warning text-dark";
                                                 statusText = "Kontrol Edilmeli";
+                                            }
+                                            else if (field.Status == FieldStatus.NotFound)
+                                            {
+                                                badgeClass = "bg-danger";
+                                                statusText = "Bulunamadı";
                                             }
 
                                             <tr>
@@ -220,6 +232,69 @@
                         </div>
                     </div>
                 }
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        Entegrasyon Kayıtları
+                    </div>
+
+                    <div class="card-body">
+                        @if (!Model.IntegrationJobs.Any())
+                        {
+                            <div class="alert alert-info">
+                                Henüz entegrasyon kaydı bulunmamaktadır.
+                            </div>
+                        }
+                        else
+                        {
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Tarih</th>
+                                        <th>Durum</th>
+                                        <th>Deneme Sayısı</th>
+                                        <th>Son Deneme Tarihi</th>
+                                        <th>Hata Mesajı</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var job in Model.IntegrationJobs)
+                                    {
+                                        var badgeClass = job.Status switch
+                                        {
+                                            IntegrationStatus.Pending => "bg-secondary",
+                                            IntegrationStatus.Processing => "bg-info text-dark",
+                                            IntegrationStatus.Success => "bg-success",
+                                            IntegrationStatus.Failed => "bg-danger",
+                                            _ => "bg-light text-dark"
+                                        };
+
+                                        <tr>
+                                            <td>@job.CreatedDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+
+                                            <td>
+                                                <span class="badge @badgeClass">
+                                                    @job.Status
+                                                </span>
+                                            </td>
+
+                                            <td>@job.RetryCount</td>
+
+                                            <td>
+                                                @(job.LastAttemptDate.HasValue
+                                                    ? job.LastAttemptDate.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                                    : "-")
+                                            </td>
+
+                                            <td>@(job.LastErrorMessage ?? "-")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
 
                 @if (Model.OcrResults.Any())
                 {

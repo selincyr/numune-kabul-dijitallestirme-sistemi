@@ -11,6 +11,7 @@ namespace NumuneKabul.Web.Pages.Documents;
 public class DetailsModel : PageModel
 {
     private readonly IPdfRenderer _pdfRenderer;
+    private readonly IIntegrationService _integrationService;
     private readonly AppDbContext _dbContext;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
@@ -25,7 +26,8 @@ public class DetailsModel : PageModel
         IPdfRenderer pdfRenderer,
         IOcrService ocrService,
         IFieldExtractionService fieldExtractionService,
-        IXmlGenerationService xmlGenerationService)
+        IXmlGenerationService xmlGenerationService,
+        IIntegrationService integrationService)
     {
         _dbContext = dbContext;
         _configuration = configuration;
@@ -34,6 +36,7 @@ public class DetailsModel : PageModel
         _ocrService = ocrService;
         _fieldExtractionService = fieldExtractionService;
         _xmlGenerationService = xmlGenerationService;
+        _integrationService = integrationService;
     }
 
     public PdfDocument? Document { get; private set; }
@@ -43,6 +46,8 @@ public class DetailsModel : PageModel
     public List<ExtractedField> ExtractedFields { get; private set; } = new();
 
     public List<XmlArchive> XmlArchives { get; private set; } = new();
+
+    public List<IntegrationJob> IntegrationJobs { get; private set; } = new();
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
@@ -70,6 +75,12 @@ public class DetailsModel : PageModel
             .ToListAsync();
 
         XmlArchives = await _dbContext.XmlArchives
+            .AsNoTracking()
+            .Where(x => x.PdfId == id)
+            .OrderByDescending(x => x.CreatedDate)
+            .ToListAsync();
+
+        IntegrationJobs = await _dbContext.IntegrationJobs
             .AsNoTracking()
             .Where(x => x.PdfId == id)
             .OrderByDescending(x => x.CreatedDate)
@@ -389,6 +400,104 @@ public class DetailsModel : PageModel
 
         TempData["SuccessMessage"] =
             "XML başarıyla oluşturuldu ve arşivlendi.";
+
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostSendIntegrationAsync(int id)
+    {
+        var document = await _dbContext.PdfDocuments
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (document is null)
+        {
+            return NotFound();
+        }
+
+        var latestXml = await _dbContext.XmlArchives
+            .Where(x => x.PdfId == id)
+            .OrderByDescending(x => x.CreatedDate)
+            .FirstOrDefaultAsync();
+
+        if (latestXml is null)
+        {
+            TempData["ErrorMessage"] =
+                "Mock entegrasyona gönderim için önce XML oluşturulmalıdır.";
+
+            AddAuditLog(
+                "IntegrationFailed",
+                $"{id} numaralı belge mock entegrasyona gönderilemedi. XML kaydı bulunamadı.");
+
+            await _dbContext.SaveChangesAsync();
+
+            return RedirectToPage(new { id });
+        }
+
+        var integrationJob = new IntegrationJob
+        {
+            PdfId = id,
+            Status = IntegrationStatus.Processing,
+            RetryCount = 0,
+            CreatedDate = DateTime.UtcNow,
+            LastAttemptDate = DateTime.UtcNow
+        };
+
+        _dbContext.IntegrationJobs.Add(integrationJob);
+
+        AddAuditLog(
+            "IntegrationStart",
+            $"{id} numaralı belge için mock entegrasyon gönderimi başlatıldı.");
+
+        await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            var result = await _integrationService.SendXmlAsync(
+                id,
+                latestXml.XmlContent);
+
+            integrationJob.Status = result.IsSuccess
+                ? IntegrationStatus.Success
+                : IntegrationStatus.Failed;
+
+            integrationJob.LastAttemptDate = DateTime.UtcNow;
+            integrationJob.LastErrorMessage = result.IsSuccess
+                ? null
+                : result.Message;
+
+            if (result.IsSuccess)
+            {
+                AddAuditLog(
+                    "IntegrationSuccess",
+                    $"{id} numaralı belge mock REST servisine başarıyla gönderildi.");
+
+                TempData["SuccessMessage"] =
+                    "XML mock REST servisine başarıyla gönderildi.";
+            }
+            else
+            {
+                AddAuditLog(
+                    "IntegrationFailed",
+                    $"{id} numaralı belge mock REST servisine gönderilemedi. Hata: {result.Message}");
+
+                TempData["ErrorMessage"] = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            integrationJob.Status = IntegrationStatus.Failed;
+            integrationJob.LastAttemptDate = DateTime.UtcNow;
+            integrationJob.LastErrorMessage = ex.Message;
+
+            AddAuditLog(
+                "IntegrationError",
+                $"{id} numaralı belge mock entegrasyona gönderilirken hata oluştu: {ex.Message}");
+
+            TempData["ErrorMessage"] =
+                $"Mock entegrasyon gönderimi sırasında hata oluştu: {ex.Message}";
+        }
+
+        await _dbContext.SaveChangesAsync();
 
         return RedirectToPage(new { id });
     }

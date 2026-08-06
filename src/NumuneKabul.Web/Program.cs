@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NumuneKabul.Application.Interfaces;
 using NumuneKabul.Infrastructure.Data;
 using NumuneKabul.Infrastructure.Services.Extraction;
+using NumuneKabul.Infrastructure.Services.Integration;
 using NumuneKabul.Infrastructure.Services.Ocr;
 using NumuneKabul.Infrastructure.Services.Pdf;
 using NumuneKabul.Infrastructure.Services.Xml;
@@ -22,6 +23,7 @@ builder.Services.AddScoped<IPdfRenderer, PdfRenderer>();
 builder.Services.AddScoped<IOcrService, TesseractOcrService>();
 builder.Services.AddScoped<IFieldExtractionService, RegexFieldExtractionService>();
 builder.Services.AddScoped<IXmlGenerationService, XmlGenerationService>();
+builder.Services.AddScoped<IIntegrationService, MockRestIntegrationService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
