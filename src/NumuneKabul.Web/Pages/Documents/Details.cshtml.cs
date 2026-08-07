@@ -421,14 +421,26 @@ public class DetailsModel : PageModel
 
         if (latestXml is null)
         {
-            TempData["ErrorMessage"] =
-                "Mock entegrasyona gönderim için önce XML oluşturulmalıdır.";
+            var failedJob = new IntegrationJob
+            {
+                PdfId = id,
+                Status = IntegrationStatus.Failed,
+                RetryCount = 0,
+                CreatedDate = DateTime.UtcNow,
+                LastAttemptDate = DateTime.UtcNow,
+                LastErrorMessage = "XML kaydı bulunamadı."
+            };
+
+            _dbContext.IntegrationJobs.Add(failedJob);
 
             AddAuditLog(
                 "IntegrationFailed",
                 $"{id} numaralı belge mock entegrasyona gönderilemedi. XML kaydı bulunamadı.");
 
             await _dbContext.SaveChangesAsync();
+
+            TempData["ErrorMessage"] =
+                "Mock entegrasyona gönderim için önce XML oluşturulmalıdır.";
 
             return RedirectToPage(new { id });
         }
@@ -495,6 +507,110 @@ public class DetailsModel : PageModel
 
             TempData["ErrorMessage"] =
                 $"Mock entegrasyon gönderimi sırasında hata oluştu: {ex.Message}";
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostRetryIntegrationAsync(int id, int jobId)
+    {
+        var document = await _dbContext.PdfDocuments
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (document is null)
+        {
+            return NotFound();
+        }
+
+        var integrationJob = await _dbContext.IntegrationJobs
+            .FirstOrDefaultAsync(x => x.Id == jobId && x.PdfId == id);
+
+        if (integrationJob is null)
+        {
+            return NotFound();
+        }
+
+        var latestXml = await _dbContext.XmlArchives
+            .Where(x => x.PdfId == id)
+            .OrderByDescending(x => x.CreatedDate)
+            .FirstOrDefaultAsync();
+
+        integrationJob.RetryCount++;
+        integrationJob.LastAttemptDate = DateTime.UtcNow;
+        integrationJob.Status = IntegrationStatus.Processing;
+        integrationJob.LastErrorMessage = null;
+
+        AddAuditLog(
+            "IntegrationRetry",
+            $"{id} numaralı belge için mock entegrasyon yeniden gönderimi başlatıldı. Deneme sayısı: {integrationJob.RetryCount}.");
+
+        await _dbContext.SaveChangesAsync();
+
+        if (latestXml is null)
+        {
+            integrationJob.Status = IntegrationStatus.Failed;
+            integrationJob.LastAttemptDate = DateTime.UtcNow;
+            integrationJob.LastErrorMessage = "XML kaydı bulunamadı.";
+
+            AddAuditLog(
+                "IntegrationRetryFailed",
+                $"{id} numaralı belge yeniden gönderilemedi. XML kaydı bulunamadı.");
+
+            await _dbContext.SaveChangesAsync();
+
+            TempData["ErrorMessage"] =
+                "Yeniden gönderim için önce XML oluşturulmalıdır.";
+
+            return RedirectToPage(new { id });
+        }
+
+        try
+        {
+            var result = await _integrationService.SendXmlAsync(
+                id,
+                latestXml.XmlContent);
+
+            integrationJob.Status = result.IsSuccess
+                ? IntegrationStatus.Success
+                : IntegrationStatus.Failed;
+
+            integrationJob.LastAttemptDate = DateTime.UtcNow;
+            integrationJob.LastErrorMessage = result.IsSuccess
+                ? null
+                : result.Message;
+
+            if (result.IsSuccess)
+            {
+                AddAuditLog(
+                    "IntegrationRetrySuccess",
+                    $"{id} numaralı belge mock REST servisine yeniden başarıyla gönderildi.");
+
+                TempData["SuccessMessage"] =
+                    "XML mock REST servisine yeniden başarıyla gönderildi.";
+            }
+            else
+            {
+                AddAuditLog(
+                    "IntegrationRetryFailed",
+                    $"{id} numaralı belge yeniden gönderilemedi. Hata: {result.Message}");
+
+                TempData["ErrorMessage"] = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            integrationJob.Status = IntegrationStatus.Failed;
+            integrationJob.LastAttemptDate = DateTime.UtcNow;
+            integrationJob.LastErrorMessage = ex.Message;
+
+            AddAuditLog(
+                "IntegrationRetryError",
+                $"{id} numaralı belge yeniden gönderilirken hata oluştu: {ex.Message}");
+
+            TempData["ErrorMessage"] =
+                $"Yeniden gönderim sırasında hata oluştu: {ex.Message}";
         }
 
         await _dbContext.SaveChangesAsync();
