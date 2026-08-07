@@ -1,0 +1,60 @@
+@page
+@model NumuneKabul.Web.Pages.Templates.IndexModel
+
+@{
+    ViewData["Title"] = "Şablonlar";
+}
+
+<div class="container mt-4">
+    <h2>Form Şablonları</h2>
+
+    <p class="text-muted">
+        OCR sonrası alan çıkarma işleminde kullanılan form şablonları bu ekranda listelenir.
+    </p>
+
+    @if (!Model.Templates.Any())
+    {
+        <div class="alert alert-info">
+            Henüz form şablonu bulunmamaktadır. Bir belge için OCR işlemi başlatıldığında varsayılan şablon otomatik oluşturulur.
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                Tanımlı Şablonlar
+            </div>
+
+            <div class="card-body">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Şablon Adı</th>
+                            <th>Kurum</th>
+                            <th>Açıklama</th>
+                            <th>Alan Sayısı</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var template in Model.Templates)
+                        {
+                            <tr>
+                                <td>@template.Name</td>
+                                <td>@(template.Institution?.Name ?? "-")</td>
+                                <td>@template.Description</td>
+                                <td>@template.TemplateFields.Count</td>
+                                <td>
+                                    <a asp-page="./Details" asp-route-id="@template.Id" class="btn btn-sm btn-primary">
+                                        Detay
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

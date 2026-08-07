@@ -1,0 +1,106 @@
+@page "{id:int}"
+@model NumuneKabul.Web.Pages.Templates.DetailsModel
+
+@{
+    ViewData["Title"] = "Şablon Detayı";
+}
+
+<div class="container mt-4">
+    @if (Model.Template is null)
+    {
+        <div class="alert alert-warning">
+            Şablon bulunamadı.
+        </div>
+    }
+    else
+    {
+        <h2>Şablon Detayı</h2>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                Şablon Bilgileri
+            </div>
+
+            <div class="card-body">
+                <p>
+                    <strong>Şablon Adı:</strong><br />
+                    @Model.Template.Name
+                </p>
+
+                <p>
+                    <strong>Kurum:</strong><br />
+                    @(Model.Template.Institution?.Name ?? "-")
+                </p>
+
+                <p>
+                    <strong>Açıklama:</strong><br />
+                    @Model.Template.Description
+                </p>
+
+                <p>
+                    <strong>Alan Sayısı:</strong><br />
+                    @Model.Template.TemplateFields.Count
+                </p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Şablona Bağlı Alanlar
+            </div>
+
+            <div class="card-body">
+                @if (!Model.Template.TemplateFields.Any())
+                {
+                    <div class="alert alert-info">
+                        Bu şablona ait alan bulunmamaktadır.
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Sıra</th>
+                                <th>Alan Adı</th>
+                                <th>Keyword</th>
+                                <th>Regex</th>
+                                <th>Zorunlu</th>
+                                <th>Veri Tipi</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var field in Model.Template.TemplateFields)
+                            {
+                                <tr>
+                                    <td>@field.OrderNo</td>
+                                    <td>@field.FieldName</td>
+                                    <td>@field.Keyword</td>
+                                    <td>
+                                        <code>@field.Regex</code>
+                                    </td>
+                                    <td>
+                                        @if (field.Required)
+                                        {
+                                            <span class="badge bg-danger">Zorunlu</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Opsiyonel</span>
+                                        }
+                                    </td>
+                                    <td>@field.DataType</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <a asp-page="./Index" class="btn btn-secondary mt-3">
+            Şablon Listesine Dön
+        </a>
+    }
+</div>
