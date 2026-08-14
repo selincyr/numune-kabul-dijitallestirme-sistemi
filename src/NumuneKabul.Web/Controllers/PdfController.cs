@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NumuneKabul.Application.Interfaces;
@@ -9,6 +10,7 @@ namespace NumuneKabul.Web.Controllers;
 
 [ApiController]
 [Route("api/pdf")]
+[Authorize(Policy = "PersonnelOrAdmin")]
 public class PdfController : ControllerBase
 {
     private readonly AppDbContext _dbContext;

@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<Institution> Institutions => Set<Institution>();
     public DbSet<FormTemplate> FormTemplates => Set<FormTemplate>();
     public DbSet<TemplateField> TemplateFields => Set<TemplateField>();
@@ -32,6 +33,18 @@ public class AppDbContext : DbContext
             entity.Property(x => x.PasswordHash).IsRequired();
 
             entity.HasIndex(x => x.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.Property(x => x.UserName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.PasswordHash).IsRequired();
+            entity.Property(x => x.Role).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.IsActive).HasDefaultValue(true);
+            entity.Property(x => x.CreatedDate).IsRequired();
+
+            entity.HasIndex(x => x.UserName).IsUnique();
         });
 
         modelBuilder.Entity<Institution>(entity =>
