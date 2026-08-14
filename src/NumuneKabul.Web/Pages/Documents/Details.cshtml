@@ -127,6 +127,90 @@
                     </div>
                 </div>
 
+                @if (Model.ExtractedFields.Any(x => x.X.HasValue && x.Y.HasValue && x.Width.HasValue && x.Height.HasValue))
+                {
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            PDF Üzerinde İşaretlenen Alanlar
+                        </div>
+
+                        <div class="card-body">
+                            <div class="alert alert-info small">
+                                OCR sonrası koordinatı bulunan alanlar PDF sayfa görüntüsü üzerinde renkli kutularla gösterilir.
+                            </div>
+
+                            <div class="mb-3 small">
+                                <span class="badge bg-success">Doğrulandı</span>
+                                <span class="badge bg-warning text-dark">Kontrol Gerekli</span>
+                                <span class="badge bg-danger">Bulunamadı</span>
+                            </div>
+
+                            @foreach (var pageGroup in Model.ExtractedFields
+                                .Where(x => x.X.HasValue && x.Y.HasValue && x.Width.HasValue && x.Height.HasValue)
+                                .GroupBy(x => x.PageNo)
+                                .OrderBy(x => x.Key))
+                            {
+                                <h6 class="mt-3">Sayfa @pageGroup.Key</h6>
+
+                                <div style="overflow: auto; border: 1px solid #ddd; padding: 8px; margin-bottom: 16px;">
+                                    <div style="position: relative; display: inline-block;">
+                                        <img src="?handler=RenderedPage&id=@Model.Document.Id&pageNo=@pageGroup.Key"
+                                             style="display: block; max-width: none;" />
+
+                                        @foreach (var field in pageGroup)
+                                        {
+                                            var borderColor = field.Status switch
+                                            {
+                                                FieldStatus.Verified => "#198754",
+                                                FieldStatus.NeedsReview => "#ffc107",
+                                                FieldStatus.NotFound => "#dc3545",
+                                                _ => "#6c757d"
+                                            };
+
+                                            var backgroundColor = field.Status switch
+                                            {
+                                                FieldStatus.Verified => "rgba(25, 135, 84, 0.15)",
+                                                FieldStatus.NeedsReview => "rgba(255, 193, 7, 0.25)",
+                                                FieldStatus.NotFound => "rgba(220, 53, 69, 0.15)",
+                                                _ => "rgba(108, 117, 125, 0.15)"
+                                            };
+
+                                            var fieldValue = !string.IsNullOrWhiteSpace(field.CorrectedValue)
+                                                ? field.CorrectedValue
+                                                : field.RawValue;
+
+                                            <div title="@($"{field.FieldName}: {fieldValue}")"
+                                                 style="
+                                                    position: absolute;
+                                                    left: @(field.X ?? 0)px;
+                                                    top: @(field.Y ?? 0)px;
+                                                    width: @(field.Width ?? 0)px;
+                                                    height: @(field.Height ?? 0)px;
+                                                    border: 3px solid @borderColor;
+                                                    background-color: @backgroundColor;
+                                                    box-sizing: border-box;">
+                                            </div>
+
+                                            <div style="
+                                                    position: absolute;
+                                                    left: @(field.X ?? 0)px;
+                                                    top: @(Math.Max(0, (field.Y ?? 0) - 24))px;
+                                                    background-color: @borderColor;
+                                                    color: white;
+                                                    font-size: 12px;
+                                                    padding: 2px 6px;
+                                                    border-radius: 4px;
+                                                    white-space: nowrap;">
+                                                @field.FieldName
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
                 @if (Model.ExtractedFields.Any())
                 {
                     <div class="card mt-3">
@@ -255,6 +339,7 @@
                                         <th>Deneme Sayısı</th>
                                         <th>Son Deneme Tarihi</th>
                                         <th>Hata Mesajı</th>
+                                        <th>İşlem</th>
                                     </tr>
                                 </thead>
 
@@ -288,6 +373,25 @@
                                             </td>
 
                                             <td>@(job.LastErrorMessage ?? "-")</td>
+
+                                            <td>
+                                                @if (job.Status == IntegrationStatus.Failed)
+                                                {
+                                                    <form method="post"
+                                                          asp-page-handler="RetryIntegration"
+                                                          asp-route-id="@Model.Document.Id"
+                                                          asp-route-jobId="@job.Id"
+                                                          class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-warning">
+                                                            Tekrar Gönder
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>

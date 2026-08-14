@@ -1,3 +1,4 @@
+using NumuneKabul.Application.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -122,6 +123,39 @@ public class DetailsModel : PageModel
         return File(stream, "application/pdf");
     }
 
+    public async Task<IActionResult> OnGetRenderedPageAsync(int id, int pageNo)
+    {
+        var document = await _dbContext.PdfDocuments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (document is null)
+        {
+            return NotFound();
+        }
+
+        var renderedPagePath = Path.Combine(
+            _environment.ContentRootPath,
+            "Storage",
+            "RenderedPages",
+            $"pdf-{document.Id}",
+            $"page-{pageNo}.png");
+
+        if (!System.IO.File.Exists(renderedPagePath))
+        {
+            return NotFound("Sayfa görüntüsü bulunamadı.");
+        }
+
+        var stream = new FileStream(
+            renderedPagePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read);
+
+        return File(stream, "image/png");
+    }
+
+
     public async Task<IActionResult> OnPostRenderAsync(int id)
     {
         var document = await _dbContext.PdfDocuments
@@ -235,6 +269,8 @@ public class DetailsModel : PageModel
             {
                 var rawText = await _ocrService.ExtractTextAsync(imageFile);
 
+                var ocrWords = await _ocrService.ExtractWordsAsync(imageFile, pageNo);
+
                 _dbContext.OcrResults.Add(new OcrResult
                 {
                     PdfId = id,
@@ -250,6 +286,8 @@ public class DetailsModel : PageModel
 
                 foreach (var field in extractedFields)
                 {
+                    var coordinate = FindFieldCoordinates(field.RawValue, ocrWords);
+
                     _dbContext.ExtractedFields.Add(new ExtractedField
                     {
                         PdfId = id,
@@ -260,6 +298,10 @@ public class DetailsModel : PageModel
                             : field.RawValue,
                         Confidence = field.Confidence,
                         PageNo = field.PageNo,
+                        X = coordinate?.X,
+                        Y = coordinate?.Y,
+                        Width = coordinate?.Width,
+                        Height = coordinate?.Height,
                         Status = field.Status
                     });
                 }
@@ -807,6 +849,143 @@ public class DetailsModel : PageModel
         }
 
         return template;
+    }
+
+    private static FieldCoordinate? FindFieldCoordinates(
+        string? fieldValue,
+        IReadOnlyList<OcrWordResult> words)
+    {
+        if (string.IsNullOrWhiteSpace(fieldValue) || words.Count == 0)
+        {
+            return null;
+        }
+
+        var normalizedFieldValue = NormalizeForCoordinateMatch(fieldValue);
+
+        if (string.IsNullOrWhiteSpace(normalizedFieldValue))
+        {
+            return null;
+        }
+
+        var validWords = words
+            .Where(x => !string.IsNullOrWhiteSpace(x.Text))
+            .ToList();
+
+        if (!validWords.Any())
+        {
+            return null;
+        }
+
+        var fieldTokens = normalizedFieldValue
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (fieldTokens.Length == 0)
+        {
+            return null;
+        }
+
+        var minWindowSize = Math.Max(1, fieldTokens.Length);
+        var maxWindowSize = Math.Min(validWords.Count, fieldTokens.Length + 4);
+
+        for (var windowSize = minWindowSize; windowSize <= maxWindowSize; windowSize++)
+        {
+            for (var startIndex = 0; startIndex <= validWords.Count - windowSize; startIndex++)
+            {
+                var selectedWords = validWords
+                    .Skip(startIndex)
+                    .Take(windowSize)
+                    .ToList();
+
+                var joinedText = string.Join(" ", selectedWords.Select(x => x.Text));
+                var normalizedJoinedText = NormalizeForCoordinateMatch(joinedText);
+
+                if (string.IsNullOrWhiteSpace(normalizedJoinedText))
+                {
+                    continue;
+                }
+
+                var isMatch =
+                    normalizedJoinedText.Contains(normalizedFieldValue) ||
+                    normalizedFieldValue.Contains(normalizedJoinedText);
+
+                if (!isMatch)
+                {
+                    continue;
+                }
+
+                return CreateCoordinate(selectedWords);
+            }
+        }
+
+        var firstToken = fieldTokens
+            .FirstOrDefault(x => x.Length >= 3);
+
+        if (firstToken is null)
+        {
+            return null;
+        }
+
+        var fallbackWord = validWords
+            .FirstOrDefault(x =>
+                NormalizeForCoordinateMatch(x.Text).Contains(firstToken));
+
+        return fallbackWord is null
+            ? null
+            : CreateCoordinate(new List<OcrWordResult> { fallbackWord });
+    }
+
+    private static FieldCoordinate CreateCoordinate(IReadOnlyList<OcrWordResult> words)
+    {
+        var minX = words.Min(x => x.X);
+        var minY = words.Min(x => x.Y);
+        var maxX = words.Max(x => x.X + x.Width);
+        var maxY = words.Max(x => x.Y + x.Height);
+
+        return new FieldCoordinate
+        {
+            X = minX,
+            Y = minY,
+            Width = maxX - minX,
+            Height = maxY - minY
+        };
+    }
+
+    private static string NormalizeForCoordinateMatch(string value)
+    {
+        return value
+            .ToLowerInvariant()
+            .Replace("ı", "i")
+            .Replace("ğ", "g")
+            .Replace("ü", "u")
+            .Replace("ş", "s")
+            .Replace("ö", "o")
+            .Replace("ç", "c")
+            .Replace("İ", "i")
+            .Replace("Ğ", "g")
+            .Replace("Ü", "u")
+            .Replace("Ş", "s")
+            .Replace("Ö", "o")
+            .Replace("Ç", "c")
+            .Replace(":", " ")
+            .Replace(";", " ")
+            .Replace(",", " ")
+            .Replace(".", " ")
+            .Replace("-", " ")
+            .Replace("/", " ")
+            .Replace("(", " ")
+            .Replace(")", " ")
+            .Trim();
+    }
+
+    private class FieldCoordinate
+    {
+        public double X { get; set; }
+
+        public double Y { get; set; }
+
+        public double Width { get; set; }
+
+        public double Height { get; set; }
     }
 
     private void AddAuditLog(string action, string description)
