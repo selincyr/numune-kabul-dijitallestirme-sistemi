@@ -2,53 +2,78 @@
 @model NumuneKabul.Web.Pages.Templates.IndexModel
 
 @{
-    ViewData["Title"] = "Şablonlar";
+    ViewData["Title"] = "Form Şablonları";
 }
 
 <div class="container mt-4">
-    <h2>Form Şablonları</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Form Şablonları</h2>
 
-    <p class="text-muted">
-        OCR sonrası alan çıkarma işleminde kullanılan form şablonları bu ekranda listelenir.
-    </p>
+        <a asp-page="./Create" class="btn btn-primary">
+            Yeni Şablon
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] is not null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] is not null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
 
     @if (!Model.Templates.Any())
     {
         <div class="alert alert-info">
-            Henüz form şablonu bulunmamaktadır. Bir belge için OCR işlemi başlatıldığında varsayılan şablon otomatik oluşturulur.
+            Henüz form şablonu bulunmuyor.
         </div>
     }
     else
     {
-        <div class="card">
-            <div class="card-header">
-                Tanımlı Şablonlar
-            </div>
-
-            <div class="card-body">
-                <table class="table table-bordered table-striped">
+        <div class="card shadow-sm border-0">
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle">
                     <thead>
                         <tr>
-                            <th>Şablon Adı</th>
+                            <th>ID</th>
                             <th>Kurum</th>
+                            <th>Şablon Adı</th>
                             <th>Açıklama</th>
                             <th>Alan Sayısı</th>
-                            <th>İşlem</th>
+                            <th class="text-end">İşlemler</th>
                         </tr>
                     </thead>
-
                     <tbody>
                         @foreach (var template in Model.Templates)
                         {
                             <tr>
-                                <td>@template.Name</td>
+                                <td>@template.Id</td>
                                 <td>@(template.Institution?.Name ?? "-")</td>
+                                <td>@template.Name</td>
                                 <td>@template.Description</td>
                                 <td>@template.TemplateFields.Count</td>
-                                <td>
-                                    <a asp-page="./Details" asp-route-id="@template.Id" class="btn btn-sm btn-primary">
+                                <td class="text-end">
+                                    <a asp-page="./Details"
+                                       asp-route-id="@template.Id"
+                                       class="btn btn-sm btn-outline-primary">
                                         Detay
                                     </a>
+
+                                    <form method="post"
+                                          asp-page-handler="Delete"
+                                          asp-route-id="@template.Id"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Bu şablonu silmek istediğinize emin misiniz? Bu işlem şablon alanlarını da siler.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            Sil
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         }

@@ -32,8 +32,52 @@ public class DetailsModel : PageModel
 
         Template.TemplateFields = Template.TemplateFields
             .OrderBy(x => x.OrderNo)
+            .ThenBy(x => x.FieldName)
             .ToList();
 
         return Page();
+    }
+
+    public async Task<IActionResult> OnPostDeleteFieldAsync(int id, int fieldId)
+    {
+        var templateExists = await _dbContext.FormTemplates
+            .AnyAsync(x => x.Id == id);
+
+        if (!templateExists)
+        {
+            return NotFound();
+        }
+
+        var field = await _dbContext.TemplateFields
+            .FirstOrDefaultAsync(x =>
+                x.Id == fieldId &&
+                x.TemplateId == id);
+
+        if (field is null)
+        {
+            return NotFound();
+        }
+
+        _dbContext.TemplateFields.Remove(field);
+
+        AddAuditLog(
+            "TemplateFieldDelete",
+            $"{id} numaralı şablondan alan silindi. Alan adı: {field.FieldName}");
+
+        await _dbContext.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Şablon alanı başarıyla silindi.";
+
+        return RedirectToPage(new { id });
+    }
+
+    private void AddAuditLog(string action, string description)
+    {
+        _dbContext.AuditLogs.Add(new AuditLog
+        {
+            Action = action,
+            Description = description,
+            Date = DateTime.UtcNow
+        });
     }
 }

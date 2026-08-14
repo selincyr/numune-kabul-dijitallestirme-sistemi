@@ -1,0 +1,89 @@
+@page
+@model NumuneKabul.Web.Pages.Templates.AddFieldModel
+
+@{
+    ViewData["Title"] = "Şablona Alan Ekle";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Şablona Alan Ekle</h2>
+
+        <a asp-page="./Details" asp-route-id="@Model.TemplateId" class="btn btn-secondary">
+            Şablona Dön
+        </a>
+    </div>
+
+    @if (TempData["ErrorMessage"] is not null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post">
+                <input type="hidden" asp-for="TemplateId" />
+
+                <div class="mb-3">
+                    <label asp-for="FieldName" class="form-label">
+                        Alan Adı
+                    </label>
+
+                    <input asp-for="FieldName" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Keyword" class="form-label">
+                        Anahtar Kelime
+                    </label>
+
+                    <input asp-for="Keyword" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Regex" class="form-label">
+                        Regex Kuralı
+                    </label>
+
+                    <textarea asp-for="Regex" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="DataType" class="form-label">
+                        Veri Tipi
+                    </label>
+
+                    <select asp-for="DataType" class="form-select">
+                        <option value="Text">Text</option>
+                        <option value="Date">Date</option>
+                        <option value="Number">Number</option>
+                        <option value="TCKN">TCKN</option>
+                        <option value="Barcode">Barcode</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="OrderNo" class="form-label">
+                        Sıra No
+                    </label>
+
+                    <input asp-for="OrderNo" type="number" class="form-control" />
+                </div>
+
+                <div class="form-check mb-3">
+                    <input asp-for="Required" class="form-check-input" />
+
+                    <label asp-for="Required" class="form-check-label">
+                        Zorunlu Alan
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Alan Ekle
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

@@ -6,78 +6,91 @@
 }
 
 <div class="container mt-4">
-    @if (TempData["SuccessMessage"] is string successMessage)
+    @if (Model.Template is not null)
     {
-        <div class="alert alert-success">
-            @successMessage
-        </div>
-    }
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2>@Model.Template.Name</h2>
+                <div class="text-muted">
+                    Kurum: @(Model.Template.Institution?.Name ?? "-")
+                </div>
+            </div>
 
-    @if (Model.Template is null)
-    {
-        <div class="alert alert-warning">
-            Şablon bulunamadı.
-        </div>
-    }
-    else
-    {
-        <h2>Şablon Detayı</h2>
+            <div class="d-flex gap-2">
+                <a asp-page="./AddField"
+                   asp-route-templateId="@Model.Template.Id"
+                   class="btn btn-primary">
+                    Alan Ekle
+                </a>
 
-        <div class="card mb-3">
+                <a asp-page="./Index" class="btn btn-secondary">
+                    Şablon Listesine Dön
+                </a>
+            </div>
+        </div>
+
+        @if (TempData["SuccessMessage"] is not null)
+        {
+            <div class="alert alert-success">
+                @TempData["SuccessMessage"]
+            </div>
+        }
+
+        @if (TempData["ErrorMessage"] is not null)
+        {
+            <div class="alert alert-danger">
+                @TempData["ErrorMessage"]
+            </div>
+        }
+
+        <div class="card shadow-sm border-0 mb-4">
             <div class="card-header">
                 Şablon Bilgileri
             </div>
 
             <div class="card-body">
-                <p>
-                    <strong>Şablon Adı:</strong><br />
-                    @Model.Template.Name
-                </p>
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Şablon ID</dt>
+                    <dd class="col-sm-9">@Model.Template.Id</dd>
 
-                <p>
-                    <strong>Kurum:</strong><br />
-                    @(Model.Template.Institution?.Name ?? "-")
-                </p>
+                    <dt class="col-sm-3">Şablon Adı</dt>
+                    <dd class="col-sm-9">@Model.Template.Name</dd>
 
-                <p>
-                    <strong>Açıklama:</strong><br />
-                    @Model.Template.Description
-                </p>
+                    <dt class="col-sm-3">Açıklama</dt>
+                    <dd class="col-sm-9">@Model.Template.Description</dd>
 
-                <p>
-                    <strong>Alan Sayısı:</strong><br />
-                    @Model.Template.TemplateFields.Count
-                </p>
+                    <dt class="col-sm-3">Alan Sayısı</dt>
+                    <dd class="col-sm-9">@Model.Template.TemplateFields.Count</dd>
+                </dl>
             </div>
         </div>
 
-        <div class="card">
+        <div class="card shadow-sm border-0">
             <div class="card-header">
-                Şablona Bağlı Alanlar
+                Şablon Alanları
             </div>
 
-            <div class="card-body">
+            <div class="card-body table-responsive">
                 @if (!Model.Template.TemplateFields.Any())
                 {
-                    <div class="alert alert-info">
-                        Bu şablona ait alan bulunmamaktadır.
+                    <div class="alert alert-info mb-0">
+                        Bu şablona henüz alan eklenmemiş.
                     </div>
                 }
                 else
                 {
-                    <table class="table table-bordered table-striped">
+                    <table class="table table-hover align-middle">
                         <thead>
                             <tr>
                                 <th>Sıra</th>
                                 <th>Alan Adı</th>
-                                <th>Keyword</th>
+                                <th>Anahtar Kelime</th>
                                 <th>Regex</th>
-                                <th>Zorunlu</th>
                                 <th>Veri Tipi</th>
-                                <th>İşlem</th>
+                                <th>Zorunlu</th>
+                                <th class="text-end">İşlemler</th>
                             </tr>
                         </thead>
-
                         <tbody>
                             @foreach (var field in Model.Template.TemplateFields)
                             {
@@ -88,23 +101,34 @@
                                     <td>
                                         <code>@field.Regex</code>
                                     </td>
+                                    <td>@field.DataType</td>
                                     <td>
                                         @if (field.Required)
                                         {
-                                            <span class="badge bg-danger">Zorunlu</span>
+                                            <span class="badge bg-danger">Evet</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary">Opsiyonel</span>
+                                            <span class="badge bg-secondary">Hayır</span>
                                         }
                                     </td>
-                                    <td>@field.DataType</td>
-                                    <td>
+                                    <td class="text-end">
                                         <a asp-page="./EditField"
                                            asp-route-id="@field.Id"
-                                           class="btn btn-sm btn-warning">
+                                           class="btn btn-sm btn-outline-primary">
                                             Düzenle
                                         </a>
+
+                                        <form method="post"
+                                              asp-page-handler="DeleteField"
+                                              asp-route-id="@Model.Template.Id"
+                                              asp-route-fieldId="@field.Id"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Bu alanı silmek istediğinize emin misiniz?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Sil
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             }
@@ -113,9 +137,5 @@
                 }
             </div>
         </div>
-
-        <a asp-page="./Index" class="btn btn-secondary mt-3">
-            Şablon Listesine Dön
-        </a>
     }
 </div>
