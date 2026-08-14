@@ -1,0 +1,43 @@
+@page "{id:int}"
+@model NumuneKabul.Web.Pages.Institutions.EditModel
+
+@{
+    ViewData["Title"] = "Kurum Düzenle";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Kurum Düzenle</h2>
+
+        <a asp-page="./Index" class="btn btn-secondary">
+            Kurum Listesine Dön
+        </a>
+    </div>
+
+    @if (TempData["ErrorMessage"] is not null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post">
+                <input type="hidden" asp-for="Id" />
+
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label">
+                        Kurum Adı
+                    </label>
+
+                    <input asp-for="Name" class="form-control" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Güncelle
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

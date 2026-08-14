@@ -1,0 +1,83 @@
+@page
+@model NumuneKabul.Web.Pages.Institutions.IndexModel
+
+@{
+    ViewData["Title"] = "Kurumlar";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Kurumlar</h2>
+
+        <a asp-page="./Create" class="btn btn-primary">
+            Yeni Kurum
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] is not null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] is not null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @if (!Model.Institutions.Any())
+    {
+        <div class="alert alert-info">
+            Henüz kurum bulunmuyor.
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kurum Adı</th>
+                            <th>Şablon Sayısı</th>
+                            <th>Belge Sayısı</th>
+                            <th class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var institution in Model.Institutions)
+                        {
+                            <tr>
+                                <td>@institution.Id</td>
+                                <td>@institution.Name</td>
+                                <td>@institution.TemplateCount</td>
+                                <td>@institution.DocumentCount</td>
+                                <td class="text-end">
+                                    <a asp-page="./Edit"
+                                       asp-route-id="@institution.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Düzenle
+                                    </a>
+
+                                    <form method="post"
+                                          asp-page-handler="Delete"
+                                          asp-route-id="@institution.Id"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Bu kurumu silmek istediğinize emin misiniz?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            Sil
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
