@@ -1,0 +1,72 @@
+@page "{id:int}"
+@model NumuneKabul.Web.Pages.Templates.EditFieldModel
+
+@{
+    ViewData["Title"] = "Şablon Alanı Düzenle";
+}
+
+<div class="container mt-4">
+    <h2>Şablon Alanı Düzenle</h2>
+
+    <p class="text-muted">
+        Bu ekran üzerinden OCR sonrası alan çıkarma işleminde kullanılan şablon alanı düzenlenir.
+    </p>
+
+    <div class="card">
+        <div class="card-header">
+            @Model.TemplateName
+        </div>
+
+        <div class="card-body">
+            <form method="post">
+                <input type="hidden" asp-for="Input.Id" />
+                <input type="hidden" asp-for="Input.TemplateId" />
+
+                <div class="mb-3">
+                    <label asp-for="Input.FieldName" class="form-label">Alan Adı</label>
+                    <input asp-for="Input.FieldName" class="form-control" />
+                    <span asp-validation-for="Input.FieldName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.Keyword" class="form-label">Keyword</label>
+                    <input asp-for="Input.Keyword" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.Regex" class="form-label">Regex Kuralı</label>
+                    <textarea asp-for="Input.Regex" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.DataType" class="form-label">Veri Tipi</label>
+                    <input asp-for="Input.DataType" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.OrderNo" class="form-label">Sıra No</label>
+                    <input asp-for="Input.OrderNo" class="form-control" type="number" />
+                </div>
+
+                <div class="form-check mb-3">
+                    <input asp-for="Input.Required" class="form-check-input" />
+                    <label asp-for="Input.Required" class="form-check-label">
+                        Zorunlu Alan
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Kaydet
+                </button>
+
+                <a asp-page="./Details" asp-route-id="@Model.Input.TemplateId" class="btn btn-secondary">
+                    Geri Dön
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

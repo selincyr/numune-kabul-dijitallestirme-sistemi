@@ -6,6 +6,13 @@
 }
 
 <div class="container mt-4">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success">
+            @successMessage
+        </div>
+    }
+
     @if (Model.Template is null)
     {
         <div class="alert alert-warning">
@@ -67,6 +74,7 @@
                                 <th>Regex</th>
                                 <th>Zorunlu</th>
                                 <th>Veri Tipi</th>
+                                <th>İşlem</th>
                             </tr>
                         </thead>
 
@@ -91,6 +99,13 @@
                                         }
                                     </td>
                                     <td>@field.DataType</td>
+                                    <td>
+                                        <a asp-page="./EditField"
+                                           asp-route-id="@field.Id"
+                                           class="btn btn-sm btn-warning">
+                                            Düzenle
+                                        </a>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
