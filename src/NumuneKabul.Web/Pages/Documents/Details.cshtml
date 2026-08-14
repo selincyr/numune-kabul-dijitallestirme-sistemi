@@ -179,8 +179,10 @@
                                                 ? field.CorrectedValue
                                                 : field.RawValue;
 
-                                            <div title="@($"{field.FieldName}: {fieldValue}")"
-                                                 style="
+                                            <a href="#field-@field.Id"
+                                               onclick="focusFieldInput(@field.Id)"
+                                               title="@($"{field.FieldName}: {fieldValue}")"
+                                               style="
                                                     position: absolute;
                                                     left: @(field.X ?? 0)px;
                                                     top: @(field.Y ?? 0)px;
@@ -188,10 +190,15 @@
                                                     height: @(field.Height ?? 0)px;
                                                     border: 3px solid @borderColor;
                                                     background-color: @backgroundColor;
-                                                    box-sizing: border-box;">
-                                            </div>
+                                                    box-sizing: border-box;
+                                                    display: block;
+                                                    cursor: pointer;
+                                                    text-decoration: none;">
+                                            </a>
 
-                                            <div style="
+                                            <a href="#field-@field.Id"
+                                               onclick="focusFieldInput(@field.Id)"
+                                               style="
                                                     position: absolute;
                                                     left: @(field.X ?? 0)px;
                                                     top: @(Math.Max(0, (field.Y ?? 0) - 24))px;
@@ -200,9 +207,11 @@
                                                     font-size: 12px;
                                                     padding: 2px 6px;
                                                     border-radius: 4px;
-                                                    white-space: nowrap;">
+                                                    white-space: nowrap;
+                                                    cursor: pointer;
+                                                    text-decoration: none;">
                                                 @field.FieldName
-                                            </div>
+                                            </a>
                                         }
                                     </div>
                                 </div>
@@ -238,6 +247,8 @@
                                         {
                                             var rawValue = field.RawValue?.Trim() ?? string.Empty;
                                             var correctedValue = field.CorrectedValue?.Trim() ?? string.Empty;
+                                            var fieldRowId = $"field-{field.Id}";
+                                            var fieldInputId = $"input-{field.Id}";
 
                                             var isManuallyCorrected =
                                                 !string.IsNullOrWhiteSpace(correctedValue) &&
@@ -267,11 +278,12 @@
                                                 statusText = "Bulunamadı";
                                             }
 
-                                            <tr>
+                                            <tr id="@fieldRowId">
                                                 <td>@field.FieldName</td>
                                                 <td>@field.RawValue</td>
                                                 <td>
                                                     <input type="text"
+                                                           id="@fieldInputId"
                                                            name="correctedValues[@field.Id]"
                                                            value="@field.CorrectedValue"
                                                            class="form-control" />
@@ -442,3 +454,39 @@
     }
 
 </div>
+
+@section Scripts {
+    <script>
+        function focusFieldInput(fieldId) {
+            setTimeout(function () {
+                const input = document.getElementById(`input-${fieldId}`);
+                const row = document.getElementById(`field-${fieldId}`);
+
+                if (row) {
+                    row.classList.add("table-warning");
+
+                    setTimeout(function () {
+                        row.classList.remove("table-warning");
+                    }, 2000);
+                }
+
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 150);
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            if (!window.location.hash || !window.location.hash.startsWith("#field-")) {
+                return;
+            }
+
+            const fieldId = window.location.hash.replace("#field-", "");
+
+            if (fieldId) {
+                focusFieldInput(fieldId);
+            }
+        });
+    </script>
+}

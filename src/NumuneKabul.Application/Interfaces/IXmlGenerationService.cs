@@ -4,5 +4,8 @@ namespace NumuneKabul.Application.Interfaces;
 
 public interface IXmlGenerationService
 {
-    string GenerateXml(PdfDocument document, List<ExtractedField> fields);
+    string GenerateXml(
+        PdfDocument document,
+        List<ExtractedField> fields,
+        List<OcrResult> ocrResults);
 }

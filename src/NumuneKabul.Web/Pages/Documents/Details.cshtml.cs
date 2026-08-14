@@ -423,7 +423,15 @@ public class DetailsModel : PageModel
             return RedirectToPage(new { id });
         }
 
-        var xmlContent = _xmlGenerationService.GenerateXml(document, fields);
+        var ocrResults = await _dbContext.OcrResults
+            .Where(x => x.PdfId == id)
+            .OrderBy(x => x.PageNo)
+            .ToListAsync();
+
+        var xmlContent = _xmlGenerationService.GenerateXml(
+            document,
+            fields,
+            ocrResults);
 
         var xmlArchive = new XmlArchive
         {
