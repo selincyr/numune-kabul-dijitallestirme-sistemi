@@ -504,3 +504,7 @@ langs.txt
 *.png
 *.jpg
 *.jpeg
+
+Logs/
+src/NumuneKabul.Web/Logs/
+*.log
