@@ -245,7 +245,7 @@ public class DetailsModel : PageModel
             return RedirectToPage(new { id });
         }
 
-        var template = await GetOrCreateDefaultTemplateAsync(document.InstitutionId);
+        var template = await GetTemplateForDocumentAsync(document);
 
         var oldResults = await _dbContext.OcrResults
             .Where(x => x.PdfId == id)
@@ -701,6 +701,31 @@ public class DetailsModel : PageModel
         TempData["SuccessMessage"] = "Belge başarıyla silindi.";
 
         return RedirectToPage("./Index");
+    }
+
+    private async Task<FormTemplate> GetTemplateForDocumentAsync(PdfDocument document)
+    {
+        if (document.TemplateId.HasValue)
+        {
+            var selectedTemplate = await _dbContext.FormTemplates
+                .Include(x => x.TemplateFields)
+                .FirstOrDefaultAsync(x =>
+                    x.Id == document.TemplateId.Value &&
+                    x.InstitutionId == document.InstitutionId);
+
+            if (selectedTemplate is not null)
+            {
+                return selectedTemplate;
+            }
+        }
+
+        var defaultTemplate = await GetOrCreateDefaultTemplateAsync(document.InstitutionId);
+
+        document.TemplateId = defaultTemplate.Id;
+
+        await _dbContext.SaveChangesAsync();
+
+        return defaultTemplate;
     }
 
     private async Task<FormTemplate> GetOrCreateDefaultTemplateAsync(int institutionId)

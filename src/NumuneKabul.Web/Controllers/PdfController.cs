@@ -32,6 +32,7 @@ public class PdfController : ControllerBase
     public async Task<IActionResult> UploadAsync(
         [FromForm] IFormFile file,
         [FromForm] int? institutionId,
+        [FromForm] int? templateId,
         CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
@@ -54,6 +55,11 @@ public class PdfController : ControllerBase
 
         var institution = await GetOrCreateInstitutionAsync(
             institutionId,
+            cancellationToken);
+
+        var selectedTemplateId = await ResolveTemplateIdAsync(
+            institution.Id,
+            templateId,
             cancellationToken);
 
         var uploadDirectorySetting = _configuration["FileStorage:UploadDirectory"]
@@ -79,6 +85,7 @@ public class PdfController : ControllerBase
         var document = new PdfDocument
         {
             InstitutionId = institution.Id,
+            TemplateId = selectedTemplateId,
             FileName = file.FileName,
             StoredFileName = storedFileName,
             UploadDate = DateTime.UtcNow,
@@ -129,6 +136,7 @@ public class PdfController : ControllerBase
                 document.FileName,
                 document.StoredFileName,
                 document.InstitutionId,
+                document.TemplateId,
                 InstitutionName = institution.Name,
                 document.UploadDate,
                 Status = document.Status.ToString()
@@ -171,6 +179,7 @@ public class PdfController : ControllerBase
             document.FileName,
             document.StoredFileName,
             document.UploadDate,
+            document.TemplateId,
             Status = document.Status.ToString(),
             Institution = document.Institution is null
                 ? null
@@ -272,6 +281,33 @@ public class PdfController : ControllerBase
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return defaultInstitution;
+    }
+
+    private async Task<int?> ResolveTemplateIdAsync(
+        int institutionId,
+        int? templateId,
+        CancellationToken cancellationToken)
+    {
+        if (templateId.HasValue)
+        {
+            var selectedTemplateExists = await _dbContext.FormTemplates
+                .AnyAsync(x =>
+                    x.Id == templateId.Value &&
+                    x.InstitutionId == institutionId,
+                    cancellationToken);
+
+            if (selectedTemplateExists)
+            {
+                return templateId.Value;
+            }
+        }
+
+        var defaultTemplate = await _dbContext.FormTemplates
+            .Where(x => x.InstitutionId == institutionId)
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return defaultTemplate?.Id;
     }
 
     private void AddAuditLog(string action, string description)

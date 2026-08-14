@@ -84,8 +84,8 @@ public class OcrController : ControllerBase
             });
         }
 
-        var template = await GetOrCreateDefaultTemplateAsync(
-            document.InstitutionId,
+        var template = await GetTemplateForDocumentAsync(
+            document,
             cancellationToken);
 
         var oldOcrResults = await _dbContext.OcrResults
@@ -245,6 +245,36 @@ public class OcrController : ControllerBase
             ocrResults,
             extractedFields
         });
+    }
+
+    private async Task<FormTemplate> GetTemplateForDocumentAsync(
+        PdfDocument document,
+        CancellationToken cancellationToken)
+    {
+        if (document.TemplateId.HasValue)
+        {
+            var selectedTemplate = await _dbContext.FormTemplates
+                .Include(x => x.TemplateFields)
+                .FirstOrDefaultAsync(x =>
+                    x.Id == document.TemplateId.Value &&
+                    x.InstitutionId == document.InstitutionId,
+                    cancellationToken);
+
+            if (selectedTemplate is not null)
+            {
+                return selectedTemplate;
+            }
+        }
+
+        var defaultTemplate = await GetOrCreateDefaultTemplateAsync(
+            document.InstitutionId,
+            cancellationToken);
+
+        document.TemplateId = defaultTemplate.Id;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return defaultTemplate;
     }
 
     private async Task<FormTemplate> GetOrCreateDefaultTemplateAsync(

@@ -1,0 +1,86 @@
+@page
+@model NumuneKabul.Web.Pages.Documents.UploadModel
+
+@{
+    ViewData["Title"] = "PDF Yükle";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">PDF Yükle</h4>
+                </div>
+
+                <div class="card-body">
+
+                    @if (TempData["SuccessMessage"] is not null)
+                    {
+                        <div class="alert alert-success">
+                            @TempData["SuccessMessage"]
+                        </div>
+                    }
+
+                    @if (TempData["ErrorMessage"] is not null)
+                    {
+                        <div class="alert alert-danger">
+                            @TempData["ErrorMessage"]
+                        </div>
+                    }
+
+                    <form method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label asp-for="PdfFile" class="form-label">
+                                PDF Dosyası
+                            </label>
+
+                            <input asp-for="PdfFile"
+                                   type="file"
+                                   accept=".pdf"
+                                   class="form-control" />
+
+                            <div class="form-text">
+                                Sadece PDF dosyası yükleyebilirsiniz.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="SelectedTemplateId" class="form-label">
+                                Form Şablonu
+                            </label>
+
+                            <select asp-for="SelectedTemplateId" class="form-select">
+                                <option value="">Varsayılan şablonu kullan</option>
+
+                                @foreach (var template in Model.Templates)
+                                {
+                                    <option value="@template.Id">
+                                        @(template.Institution?.Name ?? "Kurum Yok") - @template.Name
+                                    </option>
+                                }
+                            </select>
+
+                            <div class="form-text">
+                                OCR sırasında seçilen şablonun regex kuralları kullanılacaktır.
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                PDF Yükle
+                            </button>
+
+                            <a asp-page="./Index" class="btn btn-secondary">
+                                Belge Listesine Dön
+                            </a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
