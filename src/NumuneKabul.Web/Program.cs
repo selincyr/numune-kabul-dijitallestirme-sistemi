@@ -18,6 +18,7 @@ Directory.CreateDirectory(dataDirectory);
 connectionString = connectionString.Replace("|DataDirectory|", dataDirectory);
 
 builder.Services.AddRazorPages();
+builder.Services.AddControllers();
 
 builder.Services.AddScoped<IPdfRenderer, PdfRenderer>();
 builder.Services.AddScoped<IOcrService, TesseractOcrService>();
@@ -39,6 +40,10 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapStaticAssets();
-app.MapRazorPages().WithStaticAssets();
+
+app.MapRazorPages()
+    .WithStaticAssets();
+
+app.MapControllers();
 
 app.Run();
