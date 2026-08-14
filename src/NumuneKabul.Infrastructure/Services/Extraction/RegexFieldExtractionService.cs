@@ -1,126 +1,158 @@
 using System.Text.RegularExpressions;
 using NumuneKabul.Application.Interfaces;
 using NumuneKabul.Application.Models;
+using NumuneKabul.Domain.Entities;
+using NumuneKabul.Domain.Enums;
 
 namespace NumuneKabul.Infrastructure.Services.Extraction;
 
 public class RegexFieldExtractionService : IFieldExtractionService
 {
-    public List<ExtractedFieldResult> ExtractFields(string rawText, int pageNo)
+    public List<ExtractedFieldResult> ExtractFields(
+        string rawText,
+        int pageNo,
+        IReadOnlyCollection<TemplateField> templateFields)
     {
         var results = new List<ExtractedFieldResult>();
 
-        AddIfFound(
-            results,
-            "T.C. Kimlik No",
-            rawText,
-            @"\b[1-9][0-9]{10}\b",
-            pageNo,
-            95);
+        foreach (var templateField in templateFields.OrderBy(x => x.OrderNo))
+        {
+            if (string.IsNullOrWhiteSpace(templateField.Regex))
+            {
+                results.Add(CreateNotFoundResult(templateField, pageNo));
+                continue;
+            }
 
-        AddLineBasedField(
-            results,
-            "Hasta Adı Soyadı",
-            rawText,
-            @"(?:Hasta\s+Adı\s+Soyadı|Hasta\s+Adı|Adı\s+Soyadı|Ad\s+Soyad)\s*[:\-]?\s*(.+)",
-            pageNo,
-            80);
+            Match match;
 
-        AddLineBasedField(
-            results,
-            "Doğum Tarihi",
-            rawText,
-            @"(?:Doğum\s+Tarihi|Dogum\s+Tarihi|Doğum\s+Tar\.?)\s*[:\-]?\s*([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})",
-            pageNo,
-            85);
+            try
+            {
+                match = Regex.Match(
+                    rawText,
+                    templateField.Regex,
+                    RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            }
+            catch
+            {
+                results.Add(new ExtractedFieldResult
+                {
+                    FieldName = templateField.FieldName,
+                    RawValue = string.Empty,
+                    Confidence = 0,
+                    PageNo = pageNo,
+                    Status = FieldStatus.NeedsReview
+                });
 
-        AddLineBasedField(
-            results,
-            "Cinsiyet",
-            rawText,
-            @"(?:Cinsiyet|Cinsiyeti)\s*[:\-]?\s*(Kadın|Erkek|Kadin|E|K)",
-            pageNo,
-            80);
+                continue;
+            }
 
-        AddLineBasedField(
-            results,
-            "Kurum",
-            rawText,
-            @"(?:Kurum|Kurumu|Hastane)\s*[:\-]?\s*(.+)",
-            pageNo,
-            70);
+            if (!match.Success)
+            {
+                results.Add(CreateNotFoundResult(templateField, pageNo));
+                continue;
+            }
 
-        AddLineBasedField(
-            results,
-            "Doktor",
-            rawText,
-            @"(?:Doktor|Hekim|İstemi\s+Yapan\s+Doktor|Istemi\s+Yapan\s+Doktor)\s*[:\-]?\s*(.+)",
-            pageNo,
-            75);
+            var value = match.Groups.Count > 1
+                ? match.Groups[1].Value
+                : match.Value;
 
-        AddLineBasedField(
-            results,
-            "Protokol No",
-            rawText,
-            @"(?:Protokol\s+No|İşlem\s+No|Islem\s+No|Dosya\s+No)\s*[:\-]?\s*([A-Za-z0-9\-\/]+)",
-            pageNo,
-            80);
+            value = CleanValue(value);
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                results.Add(CreateNotFoundResult(templateField, pageNo));
+                continue;
+            }
+
+            var confidence = CalculateConfidence(templateField, rawText, value);
+
+            var status = confidence >= 85
+                ? FieldStatus.Verified
+                : FieldStatus.NeedsReview;
+
+            results.Add(new ExtractedFieldResult
+            {
+                FieldName = templateField.FieldName,
+                RawValue = value,
+                Confidence = confidence,
+                PageNo = pageNo,
+                Status = status
+            });
+        }
 
         return results;
     }
 
-    private static void AddIfFound(
-        List<ExtractedFieldResult> results,
-        string fieldName,
-        string text,
-        string pattern,
-        int pageNo,
-        decimal confidence)
+    private static ExtractedFieldResult CreateNotFoundResult(
+        TemplateField templateField,
+        int pageNo)
     {
-        var match = Regex.Match(
-            text,
-            pattern,
-            RegexOptions.IgnoreCase | RegexOptions.Multiline);
-
-        if (!match.Success)
+        return new ExtractedFieldResult
         {
-            return;
-        }
-
-        results.Add(new ExtractedFieldResult
-        {
-            FieldName = fieldName,
-            RawValue = CleanValue(match.Value),
-            Confidence = confidence,
-            PageNo = pageNo
-        });
+            FieldName = templateField.FieldName,
+            RawValue = string.Empty,
+            Confidence = 0,
+            PageNo = pageNo,
+            Status = FieldStatus.NotFound
+        };
     }
 
-    private static void AddLineBasedField(
-        List<ExtractedFieldResult> results,
-        string fieldName,
-        string text,
-        string pattern,
-        int pageNo,
-        decimal confidence)
+    private static decimal CalculateConfidence(
+        TemplateField templateField,
+        string rawText,
+        string value)
     {
-        var match = Regex.Match(
-            text,
-            pattern,
-            RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        decimal confidence = 75;
 
-        if (!match.Success || match.Groups.Count < 2)
+        if (!string.IsNullOrWhiteSpace(templateField.Keyword) &&
+            rawText.Contains(templateField.Keyword, StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            confidence += 10;
         }
 
-        results.Add(new ExtractedFieldResult
+        if (IsValueCompatibleWithDataType(templateField.DataType, value))
         {
-            FieldName = fieldName,
-            RawValue = CleanValue(match.Groups[1].Value),
-            Confidence = confidence,
-            PageNo = pageNo
-        });
+            confidence += 10;
+        }
+        else
+        {
+            confidence -= 20;
+        }
+
+        if (templateField.Required)
+        {
+            confidence += 5;
+        }
+
+        if (confidence > 95)
+        {
+            confidence = 95;
+        }
+
+        if (confidence < 0)
+        {
+            confidence = 0;
+        }
+
+        return confidence;
+    }
+
+    private static bool IsValueCompatibleWithDataType(string dataType, string value)
+    {
+        var normalizedDataType = dataType.Trim().ToLowerInvariant();
+
+        return normalizedDataType switch
+        {
+            "tckn" => Regex.IsMatch(value, @"^[1-9][0-9]{10}$"),
+            "tc" => Regex.IsMatch(value, @"^[1-9][0-9]{10}$"),
+            "tc kimlik no" => Regex.IsMatch(value, @"^[1-9][0-9]{10}$"),
+            "date" => Regex.IsMatch(value, @"^[0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4}$"),
+            "tarih" => Regex.IsMatch(value, @"^[0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4}$"),
+            "number" => Regex.IsMatch(value, @"^[0-9]+$"),
+            "numeric" => Regex.IsMatch(value, @"^[0-9]+$"),
+            "text" => !string.IsNullOrWhiteSpace(value),
+            _ => true
+        };
     }
 
     private static string CleanValue(string value)
@@ -128,6 +160,8 @@ public class RegexFieldExtractionService : IFieldExtractionService
         return value
             .Replace("|", "")
             .Replace(";", "")
+            .Replace("\r", "")
+            .Replace("\n", " ")
             .Trim();
     }
 }

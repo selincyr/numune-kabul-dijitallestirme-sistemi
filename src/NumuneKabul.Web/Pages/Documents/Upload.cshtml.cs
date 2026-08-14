@@ -31,20 +31,27 @@ public class UploadModel : PageModel
     public IFormFile? PdfFile { get; set; }
 
     [BindProperty]
+    public int? SelectedInstitutionId { get; set; }
+
+    [BindProperty]
     public int? SelectedTemplateId { get; set; }
+
+    public List<Institution> Institutions { get; private set; } = new();
 
     public List<FormTemplate> Templates { get; private set; } = new();
 
     public async Task OnGetAsync()
     {
-        await EnsureDefaultTemplateAsync();
-        await LoadTemplatesAsync();
+        await EnsureDefaultInstitutionAndTemplateAsync();
+        await LoadReferencesAsync();
+
+        SelectedInstitutionId = Institutions.FirstOrDefault()?.Id;
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        await EnsureDefaultTemplateAsync();
-        await LoadTemplatesAsync();
+        await EnsureDefaultInstitutionAndTemplateAsync();
+        await LoadReferencesAsync();
 
         if (PdfFile is null || PdfFile.Length == 0)
         {
@@ -60,11 +67,25 @@ public class UploadModel : PageModel
             return Page();
         }
 
-        var institution = await GetOrCreateDefaultInstitutionAsync();
+        var institution = await ResolveInstitutionAsync(SelectedInstitutionId);
+
+        if (institution is null)
+        {
+            TempData["ErrorMessage"] = "Geçerli bir kurum seçilmelidir.";
+            return Page();
+        }
 
         var selectedTemplateId = await ResolveTemplateIdAsync(
             institution.Id,
             SelectedTemplateId);
+
+        if (SelectedTemplateId.HasValue && selectedTemplateId is null)
+        {
+            TempData["ErrorMessage"] =
+                "Seçilen şablon seçilen kuruma ait değil. Lütfen doğru kurum ve şablonu seçin.";
+
+            return Page();
+        }
 
         var uploadDirectorySetting = _configuration["FileStorage:UploadDirectory"]
             ?? "Storage/Uploads";
@@ -100,7 +121,7 @@ public class UploadModel : PageModel
 
         AddAuditLog(
             "PdfUpload",
-            $"PDF yüklendi. Dosya adı: {PdfFile.FileName}");
+            $"PDF yüklendi. Kurum: {institution.Name}, Dosya adı: {PdfFile.FileName}");
 
         await _dbContext.SaveChangesAsync();
 
@@ -136,8 +157,13 @@ public class UploadModel : PageModel
         return RedirectToPage("./Details", new { id = document.Id });
     }
 
-    private async Task LoadTemplatesAsync()
+    private async Task LoadReferencesAsync()
     {
+        Institutions = await _dbContext.Institutions
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+
         Templates = await _dbContext.FormTemplates
             .AsNoTracking()
             .Include(x => x.Institution)
@@ -146,30 +172,66 @@ public class UploadModel : PageModel
             .ToListAsync();
     }
 
-    private async Task<Institution> GetOrCreateDefaultInstitutionAsync()
+    private async Task<Institution?> ResolveInstitutionAsync(int? institutionId)
+    {
+        if (institutionId.HasValue)
+        {
+            var selectedInstitution = await _dbContext.Institutions
+                .FirstOrDefaultAsync(x => x.Id == institutionId.Value);
+
+            if (selectedInstitution is not null)
+            {
+                return selectedInstitution;
+            }
+        }
+
+        return await _dbContext.Institutions
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<int?> ResolveTemplateIdAsync(
+        int institutionId,
+        int? templateId)
+    {
+        if (templateId.HasValue)
+        {
+            var selectedTemplateExists = await _dbContext.FormTemplates
+                .AnyAsync(x =>
+                    x.Id == templateId.Value &&
+                    x.InstitutionId == institutionId);
+
+            if (selectedTemplateExists)
+            {
+                return templateId.Value;
+            }
+
+            return null;
+        }
+
+        var defaultTemplate = await _dbContext.FormTemplates
+            .Where(x => x.InstitutionId == institutionId)
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync();
+
+        return defaultTemplate?.Id;
+    }
+
+    private async Task EnsureDefaultInstitutionAndTemplateAsync()
     {
         var institution = await _dbContext.Institutions
             .FirstOrDefaultAsync(x => x.Name == "Varsayılan Kurum");
 
-        if (institution is not null)
+        if (institution is null)
         {
-            return institution;
+            institution = new Institution
+            {
+                Name = "Varsayılan Kurum"
+            };
+
+            _dbContext.Institutions.Add(institution);
+            await _dbContext.SaveChangesAsync();
         }
-
-        institution = new Institution
-        {
-            Name = "Varsayılan Kurum"
-        };
-
-        _dbContext.Institutions.Add(institution);
-        await _dbContext.SaveChangesAsync();
-
-        return institution;
-    }
-
-    private async Task EnsureDefaultTemplateAsync()
-    {
-        var institution = await GetOrCreateDefaultInstitutionAsync();
 
         var templateExists = await _dbContext.FormTemplates
             .AnyAsync(x => x.InstitutionId == institution.Id);
@@ -188,31 +250,6 @@ public class UploadModel : PageModel
 
         _dbContext.FormTemplates.Add(template);
         await _dbContext.SaveChangesAsync();
-    }
-
-    private async Task<int?> ResolveTemplateIdAsync(
-        int institutionId,
-        int? templateId)
-    {
-        if (templateId.HasValue)
-        {
-            var selectedTemplateExists = await _dbContext.FormTemplates
-                .AnyAsync(x =>
-                    x.Id == templateId.Value &&
-                    x.InstitutionId == institutionId);
-
-            if (selectedTemplateExists)
-            {
-                return templateId.Value;
-            }
-        }
-
-        var defaultTemplate = await _dbContext.FormTemplates
-            .Where(x => x.InstitutionId == institutionId)
-            .OrderBy(x => x.Id)
-            .FirstOrDefaultAsync();
-
-        return defaultTemplate?.Id;
     }
 
     private void AddAuditLog(string action, string description)

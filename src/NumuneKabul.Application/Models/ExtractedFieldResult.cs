@@ -1,3 +1,5 @@
+using NumuneKabul.Domain.Enums;
+
 namespace NumuneKabul.Application.Models;
 
 public class ExtractedFieldResult
@@ -9,4 +11,6 @@ public class ExtractedFieldResult
     public decimal Confidence { get; set; }
 
     public int PageNo { get; set; }
+
+    public FieldStatus Status { get; set; } = FieldStatus.NotFound;
 }

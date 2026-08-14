@@ -47,12 +47,31 @@
                         </div>
 
                         <div class="mb-3">
+                            <label asp-for="SelectedInstitutionId" class="form-label">
+                                Kurum
+                            </label>
+
+                            <select asp-for="SelectedInstitutionId" class="form-select">
+                                @foreach (var institution in Model.Institutions)
+                                {
+                                    <option value="@institution.Id">
+                                        @institution.Name
+                                    </option>
+                                }
+                            </select>
+
+                            <div class="form-text">
+                                Belge seçilen kuruma bağlanacaktır.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label asp-for="SelectedTemplateId" class="form-label">
                                 Form Şablonu
                             </label>
 
                             <select asp-for="SelectedTemplateId" class="form-select">
-                                <option value="">Varsayılan şablonu kullan</option>
+                                <option value="">Seçilen kurumun varsayılan şablonunu kullan</option>
 
                                 @foreach (var template in Model.Templates)
                                 {
@@ -63,7 +82,7 @@
                             </select>
 
                             <div class="form-text">
-                                OCR sırasında seçilen şablonun regex kuralları kullanılacaktır.
+                                Seçilen şablon, seçilen kuruma ait olmalıdır.
                             </div>
                         </div>
 

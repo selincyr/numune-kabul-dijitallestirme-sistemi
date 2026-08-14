@@ -16,20 +16,38 @@ public class CreateModel : PageModel
     }
 
     [BindProperty]
+    public int InstitutionId { get; set; }
+
+    [BindProperty]
     public string Name { get; set; } = string.Empty;
 
     [BindProperty]
     public string? Description { get; set; }
 
+    public List<Institution> Institutions { get; private set; } = new();
+
     public async Task<IActionResult> OnGetAsync()
     {
         await EnsureDefaultInstitutionAsync();
+        await LoadInstitutionsAsync();
+
+        InstitutionId = Institutions.FirstOrDefault()?.Id ?? 0;
+
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        var institution = await EnsureDefaultInstitutionAsync();
+        await LoadInstitutionsAsync();
+
+        var institution = await _dbContext.Institutions
+            .FirstOrDefaultAsync(x => x.Id == InstitutionId);
+
+        if (institution is null)
+        {
+            TempData["ErrorMessage"] = "Geçerli bir kurum seçilmelidir.";
+            return Page();
+        }
 
         if (string.IsNullOrWhiteSpace(Name))
         {
@@ -37,21 +55,23 @@ public class CreateModel : PageModel
             return Page();
         }
 
+        var normalizedName = Name.Trim();
+
         var templateExists = await _dbContext.FormTemplates
             .AnyAsync(x =>
                 x.InstitutionId == institution.Id &&
-                x.Name.ToLower() == Name.Trim().ToLower());
+                x.Name.ToLower() == normalizedName.ToLower());
 
         if (templateExists)
         {
-            TempData["ErrorMessage"] = "Bu isimde bir şablon zaten var.";
+            TempData["ErrorMessage"] = "Bu kurum için aynı isimde bir şablon zaten var.";
             return Page();
         }
 
         var template = new FormTemplate
         {
             InstitutionId = institution.Id,
-            Name = Name.Trim(),
+            Name = normalizedName,
             Description = Description?.Trim()
         };
 
@@ -59,13 +79,21 @@ public class CreateModel : PageModel
 
         AddAuditLog(
             "TemplateCreate",
-            $"Yeni form şablonu oluşturuldu. Şablon adı: {template.Name}");
+            $"Yeni form şablonu oluşturuldu. Kurum: {institution.Name}, Şablon adı: {template.Name}");
 
         await _dbContext.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "Şablon başarıyla oluşturuldu.";
 
         return RedirectToPage("./Details", new { id = template.Id });
+    }
+
+    private async Task LoadInstitutionsAsync()
+    {
+        Institutions = await _dbContext.Institutions
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .ToListAsync();
     }
 
     private async Task<Institution> EnsureDefaultInstitutionAsync()

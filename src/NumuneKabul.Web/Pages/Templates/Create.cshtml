@@ -24,6 +24,22 @@
     <div class="card shadow-sm border-0">
         <div class="card-body">
             <form method="post">
+
+                <div class="mb-3">
+                    <label asp-for="InstitutionId" class="form-label">
+                        Kurum
+                    </label>
+
+                    <select asp-for="InstitutionId" class="form-select">
+                        @foreach (var institution in Model.Institutions)
+                        {
+                            <option value="@institution.Id">
+                                @institution.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+
                 <div class="mb-3">
                     <label asp-for="Name" class="form-label">
                         Şablon Adı
