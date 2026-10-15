@@ -572,3 +572,12 @@ Numune Kabul Dijitalleştirme Sistemi, PDF formatındaki numune kabul formların
 Sistem; PDF yükleme, OCR, şablon bazlı alan çıkarımı, manuel doğrulama, XML üretimi, mock LIS/HBYS entegrasyonu, JWT Authentication, Role Based Authorization, MSSQL provider desteği ve Serilog dosya loglama özelliklerini içermektedir.
 
 Uçtan uca testler sonucunda sistemin temel MVP gereksinimlerini karşıladığı doğrulanmıştır.
+
+
+## Teknik Proje Sunumu ve Tanıtım Videosu
+
+Numune Kabul Dijitalleştirme Sistemi'nin teknik mimarisini, kullanılan teknolojileri, geliştirme sürecinde karşılaşılan zorlukları ve uçtan uca kullanımını anlattığım sunum videosuna aşağıdaki bağlantıdan ulaşabilirsiniz.
+
+**[Teknik Sunum Videosunu İzle / İndir](https://github.com/selincyr/numune-kabul-dijitallestirme-sistemi/releases/tag/video-demo-v1)**
+
+Videoda PDF yükleme, OCR, şablon bazlı alan çıkarımı, manuel doğrulama, XML üretimi, Mock LIS/HBYS entegrasyonu ve sistemin teknik yapısı açıklanmaktadır.
